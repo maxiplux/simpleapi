@@ -150,6 +150,8 @@ docker run -p 8080:8080 maxiplux/simpleapi-authorization-and-resource-server:1.0
 - [Spring Boot 3.4.4](https://spring.io/projects/spring-boot)
 - [Spring Security OAuth2](https://docs.spring.io/spring-security/reference/servlet/oauth2/index.html)
 - [SpringDoc OpenAPI UI](https://springdoc.org/)
+## Note
+If you are looking for an authorization server for MCP this is the right example.
 
 ## License
 
