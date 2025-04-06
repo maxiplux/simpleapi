@@ -3,17 +3,21 @@
 # Stage 1: Build the application
 FROM gradle:8.13-jdk17 AS build
 
-# Set the working directory
 WORKDIR /app
 
-# Copy the Gradle wrapper and configuration files
-COPY gradlew gradlew.bat settings.gradle build.gradle gradle/ ./
+# Copy gradle configuration files and wrapper
+COPY build.gradle settings.gradle gradlew ./
+COPY gradle ./gradle
 
-# Copy the source code
-COPY src/ ./src/
+# Make gradlew executable
+RUN chmod +x ./gradlew
+
+# Copy source code
+COPY ./src ./src
+
 
 # Build the application
-RUN ./gradlew build --no-daemon
+RUN ./gradlew build -x test
 
 # Stage 2: Create the runtime image
 FROM openjdk:17-jdk-slim
@@ -29,3 +33,5 @@ EXPOSE 8080
 
 # Run the application
 CMD ["java", "-jar", "app.jar"]
+#docker build -t maxiplux/simpleapi-authorization-and-resource-server:1.0.0 .
+#docker push maxiplux/simpleapi-authorization-and-resource-server:1.0.0
