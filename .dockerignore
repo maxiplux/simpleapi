@@ -1,0 +1,41 @@
+# Ignore version control directories
+.git/
+.gitignore
+
+# Ignore build outputs
+build/
+*.class
+
+# Ignore IDE and editor files
+.idea/
+*.iml
+
+# Ignore Gradle files
+.gradle/
+
+# Ignore temporary and log files
+*.log
+*.tmp
+
+# Ignore documentation files
+*.md
+
+# Ignore environment and secret files
+.env*
+*.key
+
+# Ignore test files
+test/
+
+# Ignore Docker-related files
+Dockerfile*
+docker-compose*
+
+# Ignore other unnecessary files
+*.bat
+
+# Ensure necessary files are included
+!src/
+!gradle/
+!build.gradle
+!settings.gradle
