@@ -27,17 +27,17 @@ public class SecurityConfig  {
                         .anyRequest().permitAll()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2
-                        .jwt(jwt -> {
-                        }).authenticationEntryPoint(
-                                (request, response, authException) -> {
-                                    // Handle authentication entry point
-
-                                    String message = authException.getMessage() != null ?
-                                            authException.getMessage() :
-                                            "Authentication failed: Invalid credentials";
-                                    response.sendError(401, message);
-                                }
-                        )
+.authenticationEntryPoint(
+    (request, response, authException) -> {
+        // Handle authentication entry point
+        String message = authException.getMessage() != null ?
+            authException.getMessage() :
+            "Authentication failed: Invalid credentials";
+        response.sendError(401, message);
+        // Add logging here
+        //log.error("Authentication failed: {}", message, authException);
+    }
+)
                 );
         return http.build();
     }
