@@ -144,9 +144,8 @@ sequenceDiagram
 
 3. **Access Points**:
     - Authorization Server: http://localhost:9000
-    - Resource Server API: http://localhost:8081
-    - Swagger Documentation: http://localhost:8081/swagger-ui.html
-
+    - Resource Server API: http://localhost:8080
+    - Swagger Documentation: http://localhost:8080/swagger-ui.html
 ## Advanced Features
 
 - **Problem Details**: RFC 7807 compliant error responses enhance API usability
