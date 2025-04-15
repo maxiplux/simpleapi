@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  ibm-mq:
+    image: ibmcom/mq:latest
+    container_name: ibm-mq
+    ports:
+      - "1414:1414"  # MQ listener port
+      - "9443:9443"  # Web console
+    environment:
+      - LICENSE=accept
+      - MQ_QMGR_NAME=QM1
+      - MQ_APP_PASSWORD=passw0rd
+      - MQ_ADMIN_PASSWORD=admin123
+      - MQ_ENABLE_METRICS=true
+      # Optional: Create additional queues on startup
+      - MQ_DEV=true  # Enables development default configuration
+    volumes:
+      - mq-data:/var/mqm  # Persistent storage for queue data
+      # Optional: Mount custom MQ configuration
+      # - ./config:/etc/mqm
+    healthcheck:
+      test: [ "CMD", "bash", "-c", "dspmq -m QM1 | grep RUNNING" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    networks:
+      - mq-network
+
+  # Optional: Spring Boot application service
+  # spring-app:
+  #   build: .
+  #   container_name: spring-app
+  #   depends_on:
+  #     ibm-mq:
+  #       condition: service_healthy
+  #   environment:
+  #     - SPRING_PROFILES_ACTIVE=docker
+  #     - IBM_MQ_HOST=ibm-mq
+  #     - IBM_MQ_PORT=1414
+  #     - IBM_MQ_QMGR=QM1
+  #     - IBM_MQ_CHANNEL=DEV.APP.SVRCONN
+  #     - IBM_MQ_USER=app
+  #     - IBM_MQ_PASSWORD=passw0rd
+  #   networks:
+  #     - mq-network
+
+volumes:
+  mq-data:
+    name: ibm-mq-data
+
+networks:
+  mq-network:
+    name: mq-network
