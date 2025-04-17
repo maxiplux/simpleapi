@@ -1,6 +1,6 @@
 package app.quantun.simpleapi.service.impl;
 
-import app.quantun.simpleapi.config.restclient.AuthClient;
+import app.quantun.simpleapi.config.restclient.client.AuthClient;
 import app.quantun.simpleapi.model.contract.request.AuthRequest;
 import app.quantun.simpleapi.model.contract.response.AuthResponse;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;

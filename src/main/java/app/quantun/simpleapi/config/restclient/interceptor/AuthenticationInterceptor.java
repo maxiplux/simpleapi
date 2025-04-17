@@ -1,4 +1,4 @@
-package app.quantun.simpleapi.config.restclient;
+package app.quantun.simpleapi.config.restclient.interceptor;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

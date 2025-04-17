@@ -1,6 +1,6 @@
 package app.quantun.simpleapi.service.impl;
 
-import app.quantun.simpleapi.config.restclient.ProductClient;
+import app.quantun.simpleapi.config.restclient.client.ProductClient;
 import app.quantun.simpleapi.model.contract.request.ProductRequest;
 import app.quantun.simpleapi.model.contract.response.ProductResponse;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
@@ -57,7 +57,6 @@ public class ProductService {
      * @param body  The description or body content of the product
      * @return A {@link ProductResponse} containing the created product details
      * @throws io.github.resilience4j.circuitbreaker.CallNotPermittedException if the circuit is open
-     * @throws Exception                                                       if all retry attempts fail or if an unexpected error occurs
      */
     public ProductResponse addProduct(String title, String body) {
         log.info("Adding new product: {}", title);

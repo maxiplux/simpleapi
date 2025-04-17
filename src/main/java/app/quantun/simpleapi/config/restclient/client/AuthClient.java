@@ -1,4 +1,4 @@
-package app.quantun.simpleapi.config.restclient;
+package app.quantun.simpleapi.config.restclient.client;
 
 import app.quantun.simpleapi.model.contract.request.AuthRequest;
 import app.quantun.simpleapi.model.contract.response.AuthResponse;

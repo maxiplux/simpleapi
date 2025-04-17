@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api")
 @RequiredArgsConstructor
 @Slf4j
-public class DemoController {
+public class ProductController {
 
     private final AuthService authService;
     private final ProductService productService;
@@ -37,7 +37,7 @@ public class DemoController {
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping("/demo")
+    @PostMapping("/create-product")
     public ResponseEntity<ProductResponse> demoFlow() {
         // First authenticate
 

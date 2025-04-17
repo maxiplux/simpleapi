@@ -1,7 +1,12 @@
 package app.quantun.simpleapi.config.restclient;
 
 
+import app.quantun.simpleapi.config.restclient.client.AuthClient;
+import app.quantun.simpleapi.config.restclient.client.ProductClient;
+import app.quantun.simpleapi.config.restclient.interceptor.AuthenticationInterceptor;
 import app.quantun.simpleapi.exception.CustomAuthException;
+import app.quantun.simpleapi.exception.CustomProductException;
+import app.quantun.simpleapi.exception.CustomProductInternalException;
 import app.quantun.simpleapi.util.Helper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -132,7 +137,19 @@ public class HttpClientConfig {
                             } catch (Exception e) {
                                 log.error("Failed to process product service error [ID: {}]", requestId, e);
                             }
-                            throw new CustomAuthException(errorBody, response.getStatusCode());
+
+
+                            if (response.getStatusCode().is4xxClientError()) {
+                                throw new CustomProductException(errorBody, response.getStatusCode());
+                            }
+                            if (response.getStatusCode().is5xxServerError()) {
+
+                                throw new CustomProductInternalException(errorBody, response.getStatusCode());
+                            }
+
+                            throw new CustomProductException("Unexpected error status: " + response.getStatusCode(),
+                                    response.getStatusCode());
+
 
                         }
                 )

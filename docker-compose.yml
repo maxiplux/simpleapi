@@ -1,6 +1,15 @@
 version: '3.8'
 
 services:
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=simpleapi
+    ports:
+      - "5432:5432"
   ibm-mq:
     image: ibmcom/mq:latest
     container_name: ibm-mq
@@ -45,6 +54,9 @@ services:
   #     - IBM_MQ_PASSWORD=passw0rd
   #   networks:
   #     - mq-network
+  # PostgreSQL service
+
+
 
 volumes:
   mq-data:

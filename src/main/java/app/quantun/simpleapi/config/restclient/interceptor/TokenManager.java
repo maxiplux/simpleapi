@@ -1,6 +1,7 @@
-package app.quantun.simpleapi.config.restclient;
+package app.quantun.simpleapi.config.restclient.interceptor;
 
 
+import app.quantun.simpleapi.config.restclient.client.AuthClient;
 import app.quantun.simpleapi.model.contract.request.AuthRequest;
 import app.quantun.simpleapi.model.contract.response.AuthResponse;
 import lombok.RequiredArgsConstructor;

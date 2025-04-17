@@ -83,7 +83,7 @@ public class GlobalExceptionHandler {
         problemDetail.setProperty("circuitBreakerName", circuitBreakerName);
         problemDetail.setProperty("errorId", errorId);
 
-        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(problemDetail);
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).header("X-Error-Correlation-ID", errorId).body(problemDetail);
     }
 
     /**
@@ -116,7 +116,7 @@ public class GlobalExceptionHandler {
         problemDetail.setProperty("errorId", errorId);
         problemDetail.setProperty("exceptionClass", ex.getClass().getSimpleName());
 
-        return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(problemDetail);
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY).header("X-Error-Correlation-ID", errorId).body(problemDetail);
     }
 
     /**
@@ -141,7 +141,7 @@ public class GlobalExceptionHandler {
         body.setProperty("errorId", errorId);
         body.setProperty("timestamp", Instant.now());
 
-        return ResponseEntity.status(ex.getStatusCode()).body(body);
+        return ResponseEntity.status(ex.getStatusCode()).header("X-Error-Correlation-ID", errorId).body(body);
     }
 
     /**
@@ -173,7 +173,7 @@ public class GlobalExceptionHandler {
         problemDetail.setProperty("timestamp", Instant.now());
         problemDetail.setProperty("errorId", errorId);
 
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(problemDetail);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).header("X-Error-Correlation-ID", errorId).body(problemDetail);
     }
 
     @ExceptionHandler(CustomAuthException.class)
@@ -198,7 +198,7 @@ public class GlobalExceptionHandler {
         problemDetail.setProperty("timestamp", Instant.now());
         problemDetail.setProperty("errorId", errorId);
 
-        return ResponseEntity.status(ex.getStatusCode()).header("X-Correlation-ID", errorId).body(problemDetail);
+        return ResponseEntity.status(ex.getStatusCode()).header("X-Error-Correlation-ID", errorId).body(problemDetail);
 
     }
 }
