@@ -50,6 +50,11 @@ dependencies {
     testImplementation 'org.testcontainers:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
+    // https://mvnrepository.com/artifact/com.microsoft.graph/microsoft-graph
+    implementation 'com.microsoft.graph:microsoft-graph:6.36.0'
+    // https://mvnrepository.com/artifact/com.azure/azure-identity
+    implementation 'com.azure:azure-identity:1.15.4'
+
 
 }
 

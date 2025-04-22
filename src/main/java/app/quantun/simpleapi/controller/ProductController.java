@@ -170,7 +170,7 @@ public class ProductController {
     @Operation(summary = "Create a new product", description = "Creates a new product and returns it")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Product created successfully"),
-            @ApiResponse(responseCode = "400", description = "Invalid input", 
+            @ApiResponse(responseCode = "400", description = "Invalid input",
                     content = @Content(schema = @Schema(implementation = String.class))),
             @ApiResponse(responseCode = "404", description = "Category not found", content = @Content)
     })
@@ -185,7 +185,7 @@ public class ProductController {
     @Operation(summary = "Update a product", description = "Updates a product by its ID")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Product updated successfully"),
-            @ApiResponse(responseCode = "400", description = "Invalid input", 
+            @ApiResponse(responseCode = "400", description = "Invalid input",
                     content = @Content(schema = @Schema(implementation = String.class))),
             @ApiResponse(responseCode = "404", description = "Product or category not found", content = @Content)
     })

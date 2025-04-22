@@ -47,7 +47,7 @@ public class OpenApiConfig {
                                 .description("Local development server")
                 ))
                 .components(new Components()
-                        .addSecuritySchemes(securitySchemeName, 
+                        .addSecuritySchemes(securitySchemeName,
                                 new SecurityScheme()
                                         .type(SecurityScheme.Type.OAUTH2)
                                         .description("OAuth2 authentication with Azure AD")

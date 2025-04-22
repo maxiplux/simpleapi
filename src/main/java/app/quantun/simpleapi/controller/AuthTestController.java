@@ -37,13 +37,13 @@ public class AuthTestController {
         userInfo.put("preferred_username", jwt.getClaimAsString("preferred_username"));
         userInfo.put("name", jwt.getClaimAsString("name"));
         userInfo.put("email", jwt.getClaimAsString("email"));
-        
+
         // Include token claims for debugging
         Map<String, Object> claims = new HashMap<>(jwt.getClaims());
         // Remove potentially large claims
         claims.remove("aud");
         claims.remove("iss");
-        
+
         userInfo.put("claims", claims);
         return userInfo;
     }

@@ -38,6 +38,7 @@ public class CategoryController {
     @GetMapping
     @Operation(summary = "Get all categories", description = "Returns a paginated list of all categories")
     @ApiResponse(responseCode = "200", description = "Successfully retrieved categories")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_USER', 'ROLE_VIEWER')")
     public ResponseEntity<Page<Category>> getAllCategories(
             @Parameter(description = "Page number (0-based)", example = "0")
             @RequestParam(defaultValue = "0") int page,
@@ -54,9 +55,11 @@ public class CategoryController {
         return ResponseEntity.ok(categories);
     }
 
+
     @GetMapping("/all")
     @Operation(summary = "Get all categories without pagination", description = "Returns a list of all categories without pagination")
     @ApiResponse(responseCode = "200", description = "Successfully retrieved categories")
+
     public ResponseEntity<List<Category>> getAllCategoriesWithoutPagination() {
         List<Category> categories = categoryService.getAllCategories();
         return ResponseEntity.ok(categories);
@@ -79,9 +82,9 @@ public class CategoryController {
     @Operation(summary = "Create a new category", description = "Creates a new category and returns it")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Category created successfully"),
-            @ApiResponse(responseCode = "400", description = "Invalid input", 
+            @ApiResponse(responseCode = "400", description = "Invalid input",
                     content = @Content(schema = @Schema(implementation = String.class))),
-            @ApiResponse(responseCode = "403", description = "Forbidden - insufficient permissions", 
+            @ApiResponse(responseCode = "403", description = "Forbidden - insufficient permissions",
                     content = @Content)
     })
     @PreAuthorize("hasRole('ADMIN')")
@@ -101,9 +104,9 @@ public class CategoryController {
     @Operation(summary = "Update a category", description = "Updates a category by its ID")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Category updated successfully"),
-            @ApiResponse(responseCode = "400", description = "Invalid input", 
+            @ApiResponse(responseCode = "400", description = "Invalid input",
                     content = @Content(schema = @Schema(implementation = String.class))),
-            @ApiResponse(responseCode = "403", description = "Forbidden - insufficient permissions", 
+            @ApiResponse(responseCode = "403", description = "Forbidden - insufficient permissions",
                     content = @Content),
             @ApiResponse(responseCode = "404", description = "Category not found", content = @Content)
     })
@@ -126,7 +129,7 @@ public class CategoryController {
     @Operation(summary = "Delete a category", description = "Deletes a category by its ID")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "204", description = "Category deleted successfully"),
-            @ApiResponse(responseCode = "403", description = "Forbidden - insufficient permissions", 
+            @ApiResponse(responseCode = "403", description = "Forbidden - insufficient permissions",
                     content = @Content),
             @ApiResponse(responseCode = "404", description = "Category not found", content = @Content)
     })

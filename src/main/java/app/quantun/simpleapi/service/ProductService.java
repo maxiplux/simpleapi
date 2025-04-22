@@ -1,9 +1,9 @@
 package app.quantun.simpleapi.service;
 
-import app.quantun.simpleapi.model.Product;
 import app.quantun.simpleapi.model.Category;
-import app.quantun.simpleapi.repository.ProductRepository;
+import app.quantun.simpleapi.model.Product;
 import app.quantun.simpleapi.repository.CategoryRepository;
+import app.quantun.simpleapi.repository.ProductRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -63,7 +63,7 @@ public class ProductService {
      * Get products by category ID with pagination.
      *
      * @param categoryId the category ID
-     * @param pageable pagination information
+     * @param pageable   pagination information
      * @return page of products in the given category
      */
     @Transactional(readOnly = true)
@@ -85,7 +85,7 @@ public class ProductService {
     /**
      * Get products by price less than or equal to the given price with pagination.
      *
-     * @param price the maximum price
+     * @param price    the maximum price
      * @param pageable pagination information
      * @return page of products with price less than or equal to the given price
      */
@@ -108,7 +108,7 @@ public class ProductService {
     /**
      * Get products containing the given name (case-insensitive) with pagination.
      *
-     * @param name the name to search for
+     * @param name     the name to search for
      * @param pageable pagination information
      * @return page of products containing the given name
      */
@@ -147,7 +147,7 @@ public class ProductService {
     /**
      * Update an existing product.
      *
-     * @param id the product ID
+     * @param id             the product ID
      * @param productDetails the updated product details
      * @return the updated product
      * @throws EntityNotFoundException if product not found or category not found

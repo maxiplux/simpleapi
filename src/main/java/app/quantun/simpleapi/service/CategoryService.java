@@ -68,7 +68,7 @@ public class CategoryService {
     /**
      * Update an existing category.
      *
-     * @param id the category ID
+     * @param id              the category ID
      * @param categoryDetails the updated category details
      * @return the updated category
      * @throws EntityNotFoundException if category not found

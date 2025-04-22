@@ -1,7 +1,7 @@
 package app.quantun.simpleapi.repository;
 
-import app.quantun.simpleapi.model.Product;
 import app.quantun.simpleapi.model.Category;
+import app.quantun.simpleapi.model.Product;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -18,7 +18,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     /**
      * Find products by category.
-     * 
+     *
      * @param category the category
      * @return list of products in the given category
      */
@@ -26,7 +26,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     /**
      * Find products by category with pagination.
-     * 
+     *
      * @param category the category
      * @param pageable pagination information
      * @return page of products in the given category
@@ -35,7 +35,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     /**
      * Find products by category ID.
-     * 
+     *
      * @param categoryId the category ID
      * @return list of products in the given category
      */
@@ -43,16 +43,16 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     /**
      * Find products by category ID with pagination.
-     * 
+     *
      * @param categoryId the category ID
-     * @param pageable pagination information
+     * @param pageable   pagination information
      * @return page of products in the given category
      */
     Page<Product> findByCategoryId(Long categoryId, Pageable pageable);
 
     /**
      * Find products with price less than or equal to the given price.
-     * 
+     *
      * @param price the maximum price
      * @return list of products with price less than or equal to the given price
      */
@@ -60,8 +60,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     /**
      * Find products with price less than or equal to the given price with pagination.
-     * 
-     * @param price the maximum price
+     *
+     * @param price    the maximum price
      * @param pageable pagination information
      * @return page of products with price less than or equal to the given price
      */
@@ -69,7 +69,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     /**
      * Find products containing the given name (case-insensitive).
-     * 
+     *
      * @param name the name to search for
      * @return list of products containing the given name
      */
@@ -77,8 +77,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     /**
      * Find products containing the given name (case-insensitive) with pagination.
-     * 
-     * @param name the name to search for
+     *
+     * @param name     the name to search for
      * @param pageable pagination information
      * @return page of products containing the given name
      */

@@ -1,21 +1,20 @@
-package app.quantun.simpleapi.config;
+package app.quantun.simpleapi.config.oauth2;
 
+import app.quantun.simpleapi.security.CustomAuthenticationEntryPoint;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.convert.converter.Converter;
+import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.jwt.JwtDecoders;
-import org.springframework.security.oauth2.jwt.JwtValidators;
-import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.jwt.*;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
-import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -29,20 +28,24 @@ import java.util.List;
  */
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity
+@EnableMethodSecurity(prePostEnabled = true)
+@RequiredArgsConstructor
 public class SecurityConfig {
 
+
+    private final AzureGroupsJwtAuthenticationConverter grantedAuthoritiesConverter;
+    private final CustomAuthenticationEntryPoint authenticationEntryPoint;
     @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri}")
     private String issuerUri;
-
     @Value("${spring.web.cors.allowed-origins}")
     private String allowedOrigins;
-
     @Value("${spring.web.cors.allowed-methods}")
     private String allowedMethods;
-
     @Value("${spring.web.cors.allowed-headers}")
     private String allowedHeaders;
+
+    @Value("${azure.client-id}")
+    private String clientId;
 
     /**
      * Configures the security filter chain.
@@ -53,15 +56,16 @@ public class SecurityConfig {
      */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        // Configure JWT authentication
+        // Configure JWT authentication with custom entry point for 401 errors
         http.oauth2ResourceServer(oauth2 -> oauth2
-                .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));
+                .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
+                .authenticationEntryPoint(authenticationEntryPoint));
 
         // Configure authorization
         http.authorizeHttpRequests(authorize -> authorize
                 // Public endpoints
-                .requestMatchers("/", "/api-docs-ui", "/swagger-ui.html", "/swagger-ui/**", 
-                                 "/api-docs/**", "/v3/api-docs/**", "/h2-console/**").permitAll()
+                .requestMatchers("/", "/api-docs-ui", "/swagger-ui.html", "/swagger-ui/**",
+                        "/api-docs/**", "/v3/api-docs/**", "/h2-console/**","/actuator/**").permitAll()
                 // Protected API endpoints
                 .requestMatchers("/api/**").authenticated()
                 // Any other request needs authentication
@@ -82,22 +86,22 @@ public class SecurityConfig {
         return http.build();
     }
 
+
     /**
      * Configures the JWT authentication converter.
      *
      * @return the configured JwtAuthenticationConverter
      */
     @Bean
-    public JwtAuthenticationConverter jwtAuthenticationConverter() {
-        JwtGrantedAuthoritiesConverter grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
-        // Map Azure AD roles to Spring Security roles
-        grantedAuthoritiesConverter.setAuthoritiesClaimName("groups");
-        grantedAuthoritiesConverter.setAuthorityPrefix("ROLE_");
+    public Converter<Jwt, AbstractAuthenticationToken> jwtAuthenticationConverter() {
+
 
         JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
         jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
         return jwtAuthenticationConverter;
     }
+
+
 
     /**
      * Configures the JWT decoder with audience validation.
@@ -106,17 +110,13 @@ public class SecurityConfig {
      */
     @Bean
     public JwtDecoder jwtDecoder() {
-        NimbusJwtDecoder jwtDecoder = JwtDecoders.fromIssuerLocation(issuerUri);
 
-        // Use the default validator for the issuer
-        OAuth2TokenValidator<Jwt> defaultValidator = JwtValidators.createDefaultWithIssuer(issuerUri);
+        return NimbusJwtDecoder.withIssuerLocation(issuerUri).build();
 
-        // Combine validators
-        OAuth2TokenValidator<Jwt> validator = new DelegatingOAuth2TokenValidator<>(defaultValidator);
-
-        jwtDecoder.setJwtValidator(validator);
-        return jwtDecoder;
     }
+
+
+
 
     /**
      * Configures CORS.
