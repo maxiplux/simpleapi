@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.support.RestClientAdapter;
 import org.springframework.web.service.invoker.HttpServiceProxyFactory;
@@ -65,7 +66,7 @@ public class HttpClientConfig {
         RestClient restClient = RestClient.builder()
                 .baseUrl(authUrl)
                 .defaultStatusHandler(
-                        httpStatus -> httpStatus.isError(),
+                        HttpStatusCode::isError,
                         (request, response) ->
                         {
                             String requestId = UUID.randomUUID().toString();
@@ -122,7 +123,7 @@ public class HttpClientConfig {
                 .requestInterceptor(authInterceptor)
                 .baseUrl(productUrl)
                 .defaultStatusHandler(
-                        httpStatus -> httpStatus.isError(),
+                        HttpStatusCode::isError,
                         (request, response) -> {
                             String requestId = UUID.randomUUID().toString();
                             String errorBody = "";

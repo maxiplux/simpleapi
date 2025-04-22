@@ -24,7 +24,7 @@ public class CustomProductInternalException extends RuntimeException {
      * The HTTP status code associated with this product exception.
      * This is typically the status code returned by the product service.
      */
-    private HttpStatusCode statusCode;
+    private final HttpStatusCode statusCode;
 
     /**
      * Constructs a new product exception with the specified error message and status code.

@@ -11,10 +11,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
-public class HomeController {
+public class MqMessageTestController {
 
 
     private JmsTemplate jmsTemplate;
+
+
 
     @Value("${ibm.mq.queue}")
     private String queue;
