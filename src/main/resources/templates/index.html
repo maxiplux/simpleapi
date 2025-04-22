@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <title>OAuth2 Demo</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .container {
+            max-width: 800px;
+            margin-top: 50px;
+        }
+        .user-info {
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>OAuth2 Demo</h1>
+        
+        <div sec:authorize="!isAuthenticated()">
+            <h2>Please log in</h2>
+            <div class="mt-3">
+                <a href="/oauth2/authorization/google" class="btn btn-primary">Login with Google</a>
+                <!-- Add more providers as needed -->
+                <!-- <a href="/oauth2/authorization/github" class="btn btn-dark">Login with GitHub</a> -->
+            </div>
+        </div>
+        
+        <div sec:authorize="isAuthenticated()" class="user-info">
+            <h2>Welcome, <span sec:authentication="name">User</span>!</h2>
+            <p>You are logged in.</p>
+            
+            <div class="card mt-3">
+                <div class="card-header">
+                    User Information
+                </div>
+                <div class="card-body">
+                    <p><strong>Name:</strong> <span sec:authentication="name">User</span></p>
+                    <p><strong>Authorities:</strong> <span sec:authentication="authorities">Authorities</span></p>
+                </div>
+            </div>
+            
+            <div class="mt-3">
+                <a href="/api/user/me" class="btn btn-info">View User Details (JSON)</a>
+                <a href="/api/user/client" class="btn btn-info">View Client Details (JSON)</a>
+                <a href="/logout" class="btn btn-danger">Logout</a>
+            </div>
+        </div>
+        
+        <div class="mt-5">
+            <a href="/swagger-ui.html" class="btn btn-secondary">API Documentation</a>
+        </div>
+    </div>
+</body>
+</html>
