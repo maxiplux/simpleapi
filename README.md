@@ -1,7 +1,7 @@
 # Spring Boot 3.4 Resource Server with Azure OAuth2 Integration
 
 ## Project Overview
-
+Example for training. 
 This project demonstrates a robust implementation of a Spring Boot 3.4 application configured as an OAuth2 resource server that integrates with Azure Active Directory for authentication and authorization. The application provides a RESTful API for managing products and categories with role-based access control driven by Azure AD group memberships.
 
 ## Key Components
