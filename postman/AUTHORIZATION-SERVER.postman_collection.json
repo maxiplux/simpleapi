@@ -1,0 +1,119 @@
+{
+	"info": {
+		"_postman_id": "6cfef0c3-1560-41eb-a3a1-83009f7ad43e",
+		"name": "AUTHORIZATION-SERVER",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "1820203"
+	},
+	"item": [
+		{
+			"name": "GENERATE-TOKEN",
+			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "password",
+							"value": "customer1",
+							"type": "string"
+						},
+						{
+							"key": "username",
+							"value": "customer1",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{
+							"key": "grant_type",
+							"value": "client_credentials",
+							"type": "text"
+						},
+						{
+							"key": "client-id",
+							"value": "customer1",
+							"type": "text",
+							"disabled": true
+						},
+						{
+							"key": "client-secret",
+							"value": "customer1",
+							"type": "text",
+							"disabled": true
+						},
+						{
+							"key": "scope",
+							"value": "write read",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "http://localhost:8080/oauth2/token",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"oauth2",
+						"token"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "CREATE-CLIENT",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJraWQiOiJhNThhYTZhZC04M2VkLTQ3NjYtOTRiZC0xYzc0YzRkY2FiNjQiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJjdXN0b21lcjEiLCJ3ZWJzaXRlIjoiaHR0cHM6Ly9jdXN0b21lcjEuZXhhbXBsZS5jb20iLCJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjgwODAiLCJkZXNjcmlwdGlvbiI6IkN1c3RvbWVyIDEgY2xpZW50IiwiYXV0aG9yaXRpZXMiOlsiUk9MRV9BRE1JTiJdLCJhdWQiOiJjdXN0b21lcjEiLCJuYmYiOjE3NDYzNjgwNzksInNjb3BlcyI6W10sImV4cCI6MTc0NjM2ODY3OSwiaWF0IjoxNzQ2MzY4MDc5LCJjbGllbnRfbmFtZSI6IkN1c3RvbWVyIDEiLCJqdGkiOiI1YTYxNTYzYS03NGUxLTRmYmEtYmUxNi02OWIyODczZDJkNzMiLCJlbWFpbCI6ImN1c3RvbWVyMUBleGFtcGxlLmNvbSJ9.ABcrnEEFd8HksGBhL94mFaxLTMk-DKZZhFv-SRD7FXcMgnp-FZCMUTF0kgA2Jy1l17wDLRX9WpC6Gwgwqk-J7uTTk3u0HSU3cPZB3_xtTHc0ABEftHbxIXuqPLOhfdddoj7JHRbnirpqzX-79H7S1quXqpjEhNu-eAaD1VD06pFheIcCWDzgDyfpjwOXEE3m57v0Ggpcg4oWHcuSSL80lQ02iKkQgFmMfnJVbWTIC1aRpnxXxeLdI1cSIwWVLfwpiBNeSXF8uCIogjdun6jRrTqX4GGWaJNQZwEBKQw2mZzCsWK40acPj0M-dP3cPtwzeKpZsRCTvsiujCSXpVMfbA",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"clientId\": \"SUPERADMIN\",\r\n  \"clientSecret\": \"SUPERADMIN\",\r\n  \"clientName\": \"SUPERADMIN\",\r\n  \"clientDescription\": \"SUPERADMIN\",\r\n  \"clientEmail\": \"SUPERADMIN@GMAIL.COM\",\r\n  \"clientAuthenticationMethods\": [\r\n    \"CLIENT_SECRET_BASIC\"\r\n  ],\r\n  \"authorizationGrantTypes\": [\r\n    \"CLIENT_CREDENTIALS\"\r\n  ],\r\n  \"scopes\": [\r\n    \"READ\"\r\n  ],\r\n  \"authorities\": [\r\n    \"ROLE_CLIENT\",\"ROLE_ADMIN\"\r\n  ],\r\n  \"accessTokenTimeToLiveSeconds\": 1073741824,\r\n  \"refreshTokenTimeToLiveSeconds\": 1073741824\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/v1/clients",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"v1",
+						"clients"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "TOKEN",
+			"value": "eyJraWQiOiJmYTk3YWQzMC00NDYzLTQ1NmYtOWM3OC03OTE5NGU2OTE1MjIiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJjdXN0b21lcjEiLCJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjgwODAiLCJkZXNjcmlwdGlvbiI6IkN1c3RvbWVyIDEgY2xpZW50IiwiYXV0aG9yaXRpZXMiOlsiUk9MRV9BRE1JTiJdLCJhdWQiOiJjdXN0b21lcjEiLCJuYmYiOjE3NDYzNzMwMDgsInNjb3BlcyI6W10sImV4cCI6MTc0NjM3MzYwOCwiaWF0IjoxNzQ2MzczMDA4LCJjbGllbnRfbmFtZSI6IkN1c3RvbWVyIDEiLCJqdGkiOiJjZjFkMTEzYy1iYTU2LTQ2MjAtODM0MC1lMTYzNjhhNDk1MzEiLCJlbWFpbCI6ImN1c3RvbWVyMUBleGFtcGxlLmNvbSJ9.TPSNJaPo72s29MTqLkoxfsmvmE2c_c--_xxWhMdemNwhNOWer6MgmamMxe3-8u-mECrDqTTJW3b-s8HzvU7e-RMQlSfEMaxN3hswI8gmoTkJyt-3c56OlpPR54BAd4wBJfagiuTpsfqC_PDdMtZgROq-SBoCDzLDE0uNvfQxZ56dh3_DR6HK-Sg_TpEi6HMytC63aQ5c7IDkdtm-H5hkL6fupAeLaYC6SIe_B8BtK83G4qoE_ZPi8LeKr9MtUx4aSUhPLAcV5SO5cZm7mF5S4l8jX1kS6jGsrb80z6MjfP1JAmK59YvNlcGYd8yEeIcBX5mJbDyLALlf2OUbi50smQ",
+			"type": "default"
+		}
+	]
+}
