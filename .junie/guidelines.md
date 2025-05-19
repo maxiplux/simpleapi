@@ -5,6 +5,7 @@ This document provides essential information for developers working on the Simpl
 ## Build/Configuration Instructions
 
 ### Prerequisites
+
 - Java 17 or higher
 - Gradle 8.x or higher
 - Docker and Docker Compose (for running dependencies)
@@ -16,8 +17,8 @@ This document provides essential information for developers working on the Simpl
    docker-compose up -d
    ```
    This will start:
-   - PostgreSQL database on port 5432
-   - IBM MQ on port 1414 (with web console on port 9443)
+    - PostgreSQL database on port 5432
+    - IBM MQ on port 1414 (with web console on port 9443)
 
 2. **Build the application**:
    ```bash
@@ -30,9 +31,9 @@ This document provides essential information for developers working on the Simpl
    ```
 
 4. **Access the application**:
-   - API: http://localhost:8080
-   - API Documentation: http://localhost:8080/api-docs
-   - Swagger UI: http://localhost:8080/swagger-ui.html
+    - API: http://localhost:8080
+    - API Documentation: http://localhost:8080/api-docs
+    - Swagger UI: http://localhost:8080/swagger-ui.html
 
 ### Configuration
 
@@ -42,6 +43,7 @@ The application uses Spring Boot's configuration system. Key configuration files
 - `docker-compose.yml`: Configuration for containerized dependencies
 
 To override configuration for local development, create an `application-local.properties` file and run with:
+
 ```bash
 ./gradlew bootRun --args='--spring.profiles.active=local'
 ```
@@ -68,6 +70,7 @@ To override configuration for local development, create an `application-local.pr
 ### Test Structure
 
 The project uses:
+
 - JUnit 5 (Jupiter) as the testing framework
 - Spring Boot Test for integration testing
 - MockMvc for testing REST controllers
@@ -82,8 +85,8 @@ For unit tests, follow these guidelines:
 1. Create a test class in the same package as the class being tested
 2. Name the test class with the pattern `[ClassUnderTest]Test`
 3. Use appropriate annotations:
-   - `@SpringBootTest` for integration tests
-   - `@AutoConfigureMockMvc` when testing controllers with MockMvc
+    - `@SpringBootTest` for integration tests
+    - `@AutoConfigureMockMvc` when testing controllers with MockMvc
 
 Example unit test for a controller:
 
@@ -153,11 +156,13 @@ The application integrates with IBM MQ for message processing:
 ### Debugging
 
 For debugging IBM MQ issues:
+
 - Access the MQ web console at http://localhost:9443/ibmmq/console
-  - Username: admin
-  - Password: admin123
+    - Username: admin
+    - Password: admin123
 - View queue contents and manage the queue manager
 
 For application debugging:
+
 - Enable debug logging by adding `logging.level.app.quantun=DEBUG` to application.properties
 - Use Spring Boot Actuator endpoints at `/actuator` for runtime information

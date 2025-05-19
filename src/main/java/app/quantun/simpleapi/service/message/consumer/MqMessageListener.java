@@ -18,7 +18,7 @@ public class MqMessageListener {
      *
      * @param message The JMS message received from the queue
      */
-    @JmsListener(destination = "${ibm.mq.queue}")
+    @JmsListener(destination = "${ibm.mq.queue.name.request}")
     public void receiveMessage(Message message) {
         try {
             if (message instanceof TextMessage) {

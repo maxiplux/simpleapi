@@ -1,6 +1,5 @@
 package app.quantun.simpleapi.exception;
 
-import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -63,28 +62,7 @@ public class GlobalExceptionHandler {
      * @param ex The circuit breaker exception
      * @return A standardized problem detail response
      */
-    @ExceptionHandler(CallNotPermittedException.class)
-    public ResponseEntity<ProblemDetail> handleCallNotPermittedException(CallNotPermittedException ex) {
-        String circuitBreakerName = ex.getCausingCircuitBreakerName();
-        String errorId = UUID.randomUUID().toString();
-        log.error("Circuit breaker [ID: {}] '{}' is open - service unavailable",
-                errorId, circuitBreakerName);
-        // Log stack trace only at debug level
-        log.debug("Circuit breaker exception details [ID: {}]", errorId, ex);
 
-        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
-                HttpStatus.SERVICE_UNAVAILABLE,
-                "Service is temporarily unavailable due to excessive failures. Please try again later."
-        );
-
-        problemDetail.setType(URI.create("https://api.example.com/errors/service-unavailable"));
-        problemDetail.setTitle("Service Temporarily Unavailable");
-        problemDetail.setProperty("timestamp", Instant.now());
-        problemDetail.setProperty("circuitBreakerName", circuitBreakerName);
-        problemDetail.setProperty("errorId", errorId);
-
-        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).header("X-Error-Correlation-ID", errorId).body(problemDetail);
-    }
 
     /**
      * Handles exceptions when calling external services via RestClient.
