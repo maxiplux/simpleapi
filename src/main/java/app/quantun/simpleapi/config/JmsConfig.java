@@ -8,6 +8,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.jms.annotation.EnableJms;
+import org.springframework.jms.config.DefaultJmsListenerContainerFactory;
+import org.springframework.jms.config.JmsListenerContainerFactory;
 import org.springframework.jms.core.JmsTemplate;
 
 @Configuration
@@ -52,5 +54,15 @@ public class JmsConfig {
         template.convertAndSend(this.queueResponse, "message");
         return template;
     }
+
+    @Bean
+    public JmsListenerContainerFactory<?> jmsListenerContainerFactory(@Qualifier("pooledJmsConnectionFactory") ConnectionFactory connectionFactory) {
+        DefaultJmsListenerContainerFactory factory = new DefaultJmsListenerContainerFactory();
+        factory.setConnectionFactory(connectionFactory);
+        // Set to CLIENT_ACKNOWLEDGE for manual acknowledgment
+        factory.setSessionAcknowledgeMode(jakarta.jms.Session.CLIENT_ACKNOWLEDGE);
+        return factory;
+    }
+
 
 }

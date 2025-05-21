@@ -1,15 +1,22 @@
-package app.quantun.simpleapi.config.restclient.interceptor;
+package app.quantun.simpleapi.config.interceptor;
 
+
+import app.quantun.simpleapi.config.external.auth.OAuthClient;
 
 import app.quantun.simpleapi.config.restclient.client.AuthClient;
 import app.quantun.simpleapi.model.contract.request.AuthRequest;
 import app.quantun.simpleapi.model.contract.response.AuthResponse;
+import app.quantun.simpleapi.model.contract.response.TokenResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -33,24 +40,27 @@ import java.util.concurrent.locks.ReentrantLock;
 @Slf4j
 public class TokenManager {
 
-    public static final int NUMBER_OF_SECONDS_TO_VALIDATE_TOKEN
-            = 30;
-    private final AuthClient authClient;
+
+    @Value("#{${app.server.external.oauth.headers}}")
+    private Map<String, String> headersMap;
+
+
+    @Value("${app.server.external.oauth.grant-type}")
+    private String getGrantType;
+
+
+    public static final int NUMBER_OF_SECONDS_TO_VALIDATE_TOKEN = 30;
+
+
+    private final OAuthClient oAuthClient;
+
     private final ReentrantLock refreshLock = new ReentrantLock();
 
     private String currentToken;
     private Instant expiresAt;
 
-    @Value("${api.auth.username}")
-    private String username; // Default username
 
 
-    @Value("${api.auth.password}")
-    private String password;
-
-    @Value("${api.auth.expiresInMins}")
-    private Integer tokenExpirationBuffer; // Buffer in seconds
-    // Default buffer is 30 seconds
 
 
     /**
@@ -108,6 +118,7 @@ public class TokenManager {
      * @return true if the token exists and is not near expiration, false otherwise
      */
     private boolean isTokenValid() {
+        // check each 30 seconds if token is expired
         return currentToken != null && expiresAt != null &&
                 Instant.now().plusSeconds(NUMBER_OF_SECONDS_TO_VALIDATE_TOKEN
                 ).isBefore(expiresAt);
@@ -132,17 +143,24 @@ public class TokenManager {
      * @throws app.quantun.simpleapi.exception.CustomAuthException If authentication fails
      */
     private String refreshToken() {
-        AuthRequest request = AuthRequest.builder()
-                .username(this.username)  // In production, these would be configurable
-                .password(this.password)
-                .expiresInMins(this.tokenExpirationBuffer)
-                .build();
 
-        AuthResponse response = authClient.login(request);
-        currentToken = response.getAccessToken();
+
+
+
+        // Create headers from SpEL evaluated map
+        HttpHeaders headers = new HttpHeaders();
+        headersMap.forEach(headers::add);
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+        // Create body
+        String body = "grant_type="+ this.getGrantType;
+
+        ResponseEntity<TokenResponse> response = oAuthClient.getToken(headers, body);
+        currentToken = response.getBody().getAccess_token();
+        response.getBody().getExpires_in();
 
         // Calculate expiration based on requested expiration time
-        expiresAt = Instant.now().plusSeconds(request.getExpiresInMins() * 60);
+        expiresAt = Instant.now().plusSeconds(response.getBody().getExpires_in() );
         log.info("Token refreshed, valid until: {}", expiresAt);
 
         return currentToken;

@@ -7,7 +7,6 @@ import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.retry.Retry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
 
 /**
  * Service responsible for product management operations.
@@ -26,7 +25,7 @@ import org.springframework.stereotype.Service;
  * The combined use of these patterns ensures higher availability and resilience
  * for our product operations, even when the external service experiences issues.
  */
-@Service
+//@Service
 @RequiredArgsConstructor
 @Slf4j
 public class ProductService {

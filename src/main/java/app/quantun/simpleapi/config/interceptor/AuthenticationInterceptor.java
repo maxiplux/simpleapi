@@ -1,4 +1,4 @@
-package app.quantun.simpleapi.config.restclient.interceptor;
+package app.quantun.simpleapi.config.interceptor;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -55,8 +55,9 @@ public class AuthenticationInterceptor implements ClientHttpRequestInterceptor {
      * @param request The HTTP request being processed
      * @return true if the request is not for an authentication endpoint, false otherwise
      */
-    private static boolean isNotRequestingANewToken(HttpRequest request) {
-        return !request.getURI().getPath().contains("/auth/");
+    private static boolean isNotRequestingANewToken(HttpRequest request)
+    {
+        return !request.getURI().getPath().contains("/oauth2/");
     }
 
     /**
