@@ -56,6 +56,13 @@ dependencies {
     implementation 'jakarta.xml.bind:jakarta.xml.bind-api:4.0.0'
     implementation 'org.glassfish.jaxb:jaxb-runtime:4.0.2'
 
+    // Add these for testing
+    testImplementation 'com.squareup.okhttp3:mockwebserver:4.12.0'
+    testImplementation 'org.awaitility:awaitility:4.2.0'
+
+    // Make sure you have AssertJ for fluent assertions
+    testImplementation 'org.assertj:assertj-core:3.24.2'
+
 }
 
 tasks.named('test') {

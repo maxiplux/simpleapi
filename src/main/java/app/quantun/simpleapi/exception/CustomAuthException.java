@@ -37,4 +37,16 @@ public class CustomAuthException extends RuntimeException {
         this.statusCode = statusCode;
     }
 
+    /**
+     * Constructs a new authentication exception with the specified error message, status code, and cause.
+     *
+     * @param message    The detailed error message explaining the authentication failure
+     * @param statusCode The HTTP status code associated with this error, typically from the auth service
+     * @param cause      The cause of this exception
+     */
+    public CustomAuthException(String message, HttpStatusCode statusCode, Throwable cause) {
+        super(message, cause);
+        this.statusCode = statusCode;
+    }
+
 }
