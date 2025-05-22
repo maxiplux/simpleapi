@@ -2,18 +2,22 @@ package app.quantun.simpleapi.config.interceptor;
 
 
 import app.quantun.simpleapi.config.external.auth.OAuthClient;
-
-import app.quantun.simpleapi.config.restclient.client.AuthClient;
+import app.quantun.simpleapi.exception.CustomAuthException;
 import app.quantun.simpleapi.model.contract.request.AuthRequest;
-import app.quantun.simpleapi.model.contract.response.AuthResponse;
 import app.quantun.simpleapi.model.contract.response.TokenResponse;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
+import io.github.resilience4j.timelimiter.annotation.TimeLimiter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 
 import java.time.Instant;
 import java.util.Map;
@@ -41,26 +45,15 @@ import java.util.concurrent.locks.ReentrantLock;
 public class TokenManager {
 
 
+    public static final int NUMBER_OF_SECONDS_TO_VALIDATE_TOKEN = 30;
+    private final OAuthClient oAuthClient;
+    private final ReentrantLock refreshLock = new ReentrantLock();
     @Value("#{${app.server.external.oauth.headers}}")
     private Map<String, String> headersMap;
-
-
     @Value("${app.server.external.oauth.grant-type}")
     private String getGrantType;
-
-
-    public static final int NUMBER_OF_SECONDS_TO_VALIDATE_TOKEN = 30;
-
-
-    private final OAuthClient oAuthClient;
-
-    private final ReentrantLock refreshLock = new ReentrantLock();
-
     private String currentToken;
     private Instant expiresAt;
-
-
-
 
 
     /**
@@ -145,26 +138,37 @@ public class TokenManager {
     private String refreshToken() {
 
 
-
-
         // Create headers from SpEL evaluated map
         HttpHeaders headers = new HttpHeaders();
         headersMap.forEach(headers::add);
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
         // Create body
-        String body = "grant_type="+ this.getGrantType;
+        String body = "grant_type=" + this.getGrantType;
 
-        ResponseEntity<TokenResponse> response = oAuthClient.getToken(headers, body);
+        ResponseEntity<TokenResponse> response = generateToken(headers,   body);
         currentToken = response.getBody().getAccess_token();
         response.getBody().getExpires_in();
 
         // Calculate expiration based on requested expiration time
-        expiresAt = Instant.now().plusSeconds(response.getBody().getExpires_in() );
+        expiresAt = Instant.now().plusSeconds(response.getBody().getExpires_in());
         log.info("Token refreshed, valid until: {}", expiresAt);
 
         return currentToken;
     }
+
+
+    @CircuitBreaker(name = "authService", fallbackMethod = "authFallback")
+    @Retry(name = "authService")
+    @TimeLimiter(name = "authService")
+    public ResponseEntity<TokenResponse> generateToken(HttpHeaders headers,  String body) {
+        return oAuthClient.getToken(headers, body);
+    }
+    public TokenResponse authFallback(HttpHeaders headers, String body, Exception e) {
+        log.error("TokenManager:AuthFallback {} ", e.getMessage());
+        throw new CustomAuthException(e.getMessage(), HttpStatus.TOO_MANY_REQUESTS);
+    }
+
 
     /**
      * Invalidates the current token, forcing the next request to fetch a new one.

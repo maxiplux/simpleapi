@@ -55,8 +55,7 @@ public class AuthenticationInterceptor implements ClientHttpRequestInterceptor {
      * @param request The HTTP request being processed
      * @return true if the request is not for an authentication endpoint, false otherwise
      */
-    private static boolean isNotRequestingANewToken(HttpRequest request)
-    {
+    private static boolean isNotRequestingANewToken(HttpRequest request) {
         return !request.getURI().getPath().contains("/oauth2/");
     }
 

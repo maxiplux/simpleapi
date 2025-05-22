@@ -1,7 +1,5 @@
 package app.quantun.simpleapi.config.external.auth;
 
-import app.quantun.simpleapi.config.external.search.CrawLerClient;
-import app.quantun.simpleapi.config.interceptor.AuthenticationInterceptor;
 import app.quantun.simpleapi.exception.CustomAuthException;
 import app.quantun.simpleapi.util.Helper;
 import lombok.extern.slf4j.Slf4j;
@@ -21,8 +19,6 @@ public class OAuthClientConfig {
 
     @Value("${app.server.external.oauth.base-url}")
     private String oAuthBaseUrl;
-
-
 
 
     @Bean

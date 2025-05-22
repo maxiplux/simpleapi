@@ -1,7 +1,6 @@
 package app.quantun.simpleapi.config.external.auth;
 
 import app.quantun.simpleapi.model.contract.response.TokenResponse;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestBody;

@@ -1,7 +1,6 @@
 package app.quantun.simpleapi.service.impl;
 
 import app.quantun.simpleapi.config.external.auth.OAuthClient;
-
 import app.quantun.simpleapi.model.contract.request.AuthRequest;
 import app.quantun.simpleapi.model.contract.response.AuthResponse;
 import app.quantun.simpleapi.model.contract.response.TokenResponse;
@@ -27,15 +26,9 @@ public class AuthService {
     private final CircuitBreaker authCircuitBreaker;
     private final Retry authRetry;
 
-
-
+    private final OAuthClient oAuthClient;
     @Value("${app.server.external.oauth.grant-type}")
     private String getGrantType;
-
-
-    private final OAuthClient oAuthClient;
-
-
     @Value("#{${app.server.external.oauth.headers}}")
     private Map<String, String> headersMap;
 

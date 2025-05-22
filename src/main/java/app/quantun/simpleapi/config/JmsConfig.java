@@ -11,6 +11,7 @@ import org.springframework.jms.annotation.EnableJms;
 import org.springframework.jms.config.DefaultJmsListenerContainerFactory;
 import org.springframework.jms.config.JmsListenerContainerFactory;
 import org.springframework.jms.core.JmsTemplate;
+import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 
 @Configuration
 @EnableJms
@@ -60,9 +61,12 @@ public class JmsConfig {
         DefaultJmsListenerContainerFactory factory = new DefaultJmsListenerContainerFactory();
         factory.setConnectionFactory(connectionFactory);
         // Set to CLIENT_ACKNOWLEDGE for manual acknowledgment
+
+
         factory.setSessionAcknowledgeMode(jakarta.jms.Session.CLIENT_ACKNOWLEDGE);
         return factory;
     }
+
 
 
 }
