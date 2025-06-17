@@ -19,7 +19,9 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 
@@ -212,7 +214,33 @@ public class TokenManager {
         // Apply time limiter and handle fallback
         return timeLimiter.executeCompletionStage(resilienceExecutorService, () -> future)
                 .toCompletableFuture()
-                .handle((result, throwable) -> handleFallback(headers, body, result, throwable));
+                .exceptionally(throwable -> {
+                    // Handle the exception
+                    if (throwable == null) {
+                        return null;
+                    }
+
+                    String errorMessage = throwable.getMessage();
+                    String requestInfo = String.format("Request [body: %s]", body);
+
+                    // If the throwable is a CompletionException, unwrap it
+                    Throwable cause = throwable instanceof CompletionException ? throwable.getCause() : throwable;
+
+                    // If the cause is already a CustomAuthException, preserve its status code and message
+                    if (cause instanceof CustomAuthException) {
+                        log.error("Token generation failed with CustomAuthException: {}. {}", errorMessage, requestInfo);
+                        throw (CustomAuthException) cause;
+                    } else if (cause instanceof TimeoutException) {
+                        log.error("Token generation timed out: {}. {}", errorMessage, requestInfo);
+                        throw new CustomAuthException("TimeLimiter 'authService' recorded a timeout exception", HttpStatus.TOO_MANY_REQUESTS, cause);
+                    } else if (cause instanceof java.util.concurrent.RejectedExecutionException) {
+                        log.error("Token generation request rejected: {}. {}", errorMessage, requestInfo);
+                        throw new CustomAuthException(errorMessage, HttpStatus.TOO_MANY_REQUESTS, cause);
+                    } else {
+                        log.error("Token generation failed with unexpected error: {}. {}", errorMessage, requestInfo);
+                        throw new CustomAuthException(errorMessage, HttpStatus.TOO_MANY_REQUESTS, cause);
+                    }
+                });
     }
 
     /**
@@ -260,15 +288,20 @@ public class TokenManager {
         String errorMessage = throwable.getMessage();
         String requestInfo = String.format("Request [body: %s]", body);
 
-        if (throwable instanceof java.util.concurrent.TimeoutException) {
+        // If the throwable is already a CustomAuthException, preserve its status code and message
+        if (throwable instanceof CustomAuthException) {
+            log.error("Token generation failed with CustomAuthException: {}. {}", errorMessage, requestInfo);
+            throw (CustomAuthException) throwable;
+        } else if (throwable instanceof java.util.concurrent.TimeoutException) {
             log.error("Token generation timed out: {}. {}", errorMessage, requestInfo);
+            throw new CustomAuthException("TimeLimiter 'authService' recorded a timeout exception", HttpStatus.TOO_MANY_REQUESTS, throwable);
         } else if (throwable instanceof java.util.concurrent.RejectedExecutionException) {
             log.error("Token generation request rejected: {}. {}", errorMessage, requestInfo);
+            throw new CustomAuthException(errorMessage, HttpStatus.TOO_MANY_REQUESTS, throwable);
         } else {
             log.error("Token generation failed with unexpected error: {}. {}", errorMessage, requestInfo);
+            throw new CustomAuthException(errorMessage, HttpStatus.TOO_MANY_REQUESTS, throwable);
         }
-
-        throw new CustomAuthException(errorMessage, HttpStatus.TOO_MANY_REQUESTS);
     }
 
 

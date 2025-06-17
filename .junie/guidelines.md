@@ -1,53 +1,55 @@
 # Spring Boot 3.4 Best Practices Guidelines
 
 ## Table of Contents
+
 1. [Introduction](#introduction)
 2. [Architecture Style](#1-architecture-style)
-   1. [Layered Architecture](#11-adopt-a-layered-architecture)
-   2. [Service-Oriented Structure](#12-service-oriented-structure)
-   3. [Configuration Management](#13-configuration-management)
-   4. [Directory Structure](#14-directory-structure)
+    1. [Layered Architecture](#11-adopt-a-layered-architecture)
+    2. [Service-Oriented Structure](#12-service-oriented-structure)
+    3. [Configuration Management](#13-configuration-management)
+    4. [Directory Structure](#14-directory-structure)
 3. [Controllers](#2-controllers)
-   1. [REST Controllers Best Practices](#21-rest-controllers-best-practices)
-   2. [Request/Response Objects](#22-requestresponse-objects)
-   3. [Exception Handling](#23-exception-handling)
+    1. [REST Controllers Best Practices](#21-rest-controllers-best-practices)
+    2. [Request/Response Objects](#22-requestresponse-objects)
+    3. [Exception Handling](#23-exception-handling)
 4. [Testing](#3-testing)
-   1. [Test Framework Requirements](#31-test-framework-requirements)
-   2. [Working with MockBean](#32-working-with-mockbean)
-   3. [Unit Testing vs Integration Testing](#33-unit-testing-with-mock-vs-integration-testing-with-mockitobean)
-   4. [Testing Controller Layers](#34-testing-controller-layers-with-mockmvc-and-mockbean)
-   5. [Testing with Slices](#35-testing-with-slices-and-mockbean)
+    1. [Test Framework Requirements](#31-test-framework-requirements)
+    2. [Working with MockBean](#32-working-with-mockbean)
+    3. [Unit Testing vs Integration Testing](#33-unit-testing-with-mock-vs-integration-testing-with-mockitobean)
+    4. [Testing Controller Layers](#34-testing-controller-layers-with-mockmvc-and-mockbean)
+    5. [Testing with Slices](#35-testing-with-slices-and-mockbean)
 5. [Libraries and Dependencies](#4-libraries-and-dependencies)
-   1. [Core Libraries](#41-core-libraries)
-   2. [Database](#42-database)
-   3. [Logging](#43-logging)
-   4. [API Documentation](#44-api-documentation)
-   5. [HTTP Client with RestClient](#45-http-client-with-restclient)
+    1. [Core Libraries](#41-core-libraries)
+    2. [Database](#42-database)
+    3. [Logging](#43-logging)
+    4. [API Documentation](#44-api-documentation)
+    5. [HTTP Client with RestClient](#45-http-client-with-restclient)
 6. [Common Pitfalls and Gotchas](#5-common-pitfalls-and-gotchas)
-   1. [Frequent Mistakes to Avoid](#51-frequent-mistakes-to-avoid)
-   2. [Edge Cases to Consider](#52-edge-cases-to-consider)
-   3. [Version Compatibility](#53-version-compatibility)
-   4. [Anti-Patterns to Avoid](#54-anti-patterns-to-avoid)
+    1. [Frequent Mistakes to Avoid](#51-frequent-mistakes-to-avoid)
+    2. [Edge Cases to Consider](#52-edge-cases-to-consider)
+    3. [Version Compatibility](#53-version-compatibility)
+    4. [Anti-Patterns to Avoid](#54-anti-patterns-to-avoid)
 7. [Performance Optimization Techniques](#6-performance-optimization-techniques)
-   1. [Database Query Optimization](#61-database-query-optimization)
-   2. [Caching](#62-caching)
-   3. [Asynchronous Processing](#63-asynchronous-processing)
-   4. [Pagination](#64-pagination)
-   5. [Load Testing](#65-load-testing)
+    1. [Database Query Optimization](#61-database-query-optimization)
+    2. [Caching](#62-caching)
+    3. [Asynchronous Processing](#63-asynchronous-processing)
+    4. [Pagination](#64-pagination)
+    5. [Load Testing](#65-load-testing)
 8. [Development Environment and Tooling](#7-development-environment-and-tooling)
-   1. [Recommended Tools](#71-recommended-tools)
-   2. [Code Quality Tools](#72-code-quality-tools)
+    1. [Recommended Tools](#71-recommended-tools)
+    2. [Code Quality Tools](#72-code-quality-tools)
 9. [General Best Practices](#8-general-best-practices)
-   1. [Code Quality](#81-code-quality)
-   2. [Performance Optimization](#82-performance-optimization)
-   3. [Documentation](#83-documentation)
+    1. [Code Quality](#81-code-quality)
+    2. [Performance Optimization](#82-performance-optimization)
+    3. [Documentation](#83-documentation)
 10. [Additional Considerations](#9-additional-considerations)
-   1. [Internationalization and Localization](#91-internationalization-and-localization)
-   2. [Advanced API Design Principles](#92-advanced-api-design-principles)
+1. [Internationalization and Localization](#91-internationalization-and-localization)
+2. [Advanced API Design Principles](#92-advanced-api-design-principles)
 
 ## Introduction
 
-This document outlines the architecture, development, and testing guidelines for applications built with Spring Boot 3.4. Following these practices will help ensure scalable, maintainable, and robust applications.
+This document outlines the architecture, development, and testing guidelines for applications built with Spring Boot
+3.4. Following these practices will help ensure scalable, maintainable, and robust applications.
 
 ## 1. Architecture Style
 
@@ -112,7 +114,8 @@ src/
 ```
 
 - **Root Package**: Use a meaningful root package name (e.g., `app.quantun.simpleapi`)
-- **Modularization**: For larger applications, consider breaking down the application into modules based on business domains
+- **Modularization**: For larger applications, consider breaking down the application into modules based on business
+  domains
 
 ## 2. Controllers
 
@@ -219,13 +222,15 @@ public class GlobalExceptionHandler {
 - **AssertJ**: Preferred for fluent assertions
 
 Follow the test pyramid approach:
+
 - **Unit Tests**: Most numerous, test individual components in isolation
 - **Integration Tests**: Test interactions between components
 - **End-to-End Tests**: Fewer tests covering critical business flows
 
 ### 3.2 Working with MockitoBean
 
-`@MockitoBean` is a Spring Boot test annotation that adds Mockito mocks to the Spring ApplicationContext. It's essential for proper Spring Boot integration testing:
+`@MockitoBean` is a Spring Boot test annotation that adds Mockito mocks to the Spring ApplicationContext. It's essential
+for proper Spring Boot integration testing:
 
 ```java
 @SpringBootTest
@@ -444,7 +449,8 @@ public class UserServiceImpl implements UserService {
 
 ### 4.5 HTTP Client with RestClient
 
-Spring Boot 3.4 includes support for the newer RestClient from Spring Framework 6.1, which replaces the older RestTemplate. Use RestClient for making HTTP requests to external services:
+Spring Boot 3.4 includes support for the newer RestClient from Spring Framework 6.1, which replaces the older
+RestTemplate. Use RestClient for making HTTP requests to external services:
 
 ```java
 @Service
@@ -495,6 +501,7 @@ public class ExternalApiService {
 ```
 
 Benefits of RestClient over RestTemplate:
+
 - Fluent interface with builder pattern
 - Better error handling
 - Type safety
@@ -506,7 +513,8 @@ Benefits of RestClient over RestTemplate:
 
 ### 5.1 Frequent Mistakes to Avoid
 
-- **Not Understanding Spring Boot Concepts**: Ensure solid understanding of Spring and Dependency Injection before diving in
+- **Not Understanding Spring Boot Concepts**: Ensure solid understanding of Spring and Dependency Injection before
+  diving in
 - **Overusing `@Autowired`**: Always prefer constructor injection over field injection
 - **Not Using Spring Boot Starters**: Leverage Spring Boot Starters for simplified dependency management
 - **Hardcoded Configuration**: Externalize configuration using `application.properties` or `application.yml`
@@ -735,7 +743,6 @@ If your application needs to support multiple languages or regions:
 - Consider implementing HATEOAS for better API discoverability
 - Version your APIs appropriately to manage changes
 
-
 ## Extras Code Style Guidelines
 
 - **Formatting**  
@@ -746,9 +753,9 @@ If your application needs to support multiple languages or regions:
   Prefer `jakarta.*` over `javax.*`.
 
 - **Naming Conventions**
-   - Class names in PascalCase
-   - Variables and methods in camelCase
-   - Constants in UPPER\_SNAKE\_CASE
+    - Class names in PascalCase
+    - Variables and methods in camelCase
+    - Constants in UPPER\_SNAKE\_CASE
 
 - **Annotations**  
   Use JPA annotations consistently (e.g., `@Entity`, `@Column`) and Lombok annotations (like `@Getter`, `@Setter`).  
@@ -770,4 +777,6 @@ If your application needs to support multiple languages or regions:
 
 ## Conclusion
 
-These guidelines are designed to ensure quality, maintainability, and robustness for Spring Boot 3.4 applications. Teams should adapt these practices to their specific requirements while maintaining the core principles outlined in this document.
+These guidelines are designed to ensure quality, maintainability, and robustness for Spring Boot 3.4 applications. Teams
+should adapt these practices to their specific requirements while maintaining the core principles outlined in this
+document.
