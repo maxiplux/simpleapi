@@ -9,8 +9,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.jms.JmsException;
 import org.springframework.jms.core.JmsTemplate;
-import org.springframework.messaging.Message;
-import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -51,8 +49,7 @@ public class MqMessageTestController {
 
 
             return "Message sent to queue: " + queueRequest;
-        }
-        catch (JmsException e) {
+        } catch (JmsException e) {
             log.error("JmsException {}", e.getMessage());
             return "Failed to deliver message: " + e.getMessage();
         }

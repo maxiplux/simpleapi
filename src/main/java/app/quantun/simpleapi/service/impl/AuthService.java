@@ -4,8 +4,6 @@ import app.quantun.simpleapi.config.external.auth.OAuthClient;
 import app.quantun.simpleapi.model.contract.request.AuthRequest;
 import app.quantun.simpleapi.model.contract.response.AuthResponse;
 import app.quantun.simpleapi.model.contract.response.TokenResponse;
-import io.github.resilience4j.circuitbreaker.CircuitBreaker;
-import io.github.resilience4j.retry.Retry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,8 +21,6 @@ public class AuthService {
 
     //private final AuthClient authClient;
 
-    private final CircuitBreaker authCircuitBreaker;
-    private final Retry authRetry;
 
     private final OAuthClient oAuthClient;
     @Value("${app.server.external.oauth.grant-type}")

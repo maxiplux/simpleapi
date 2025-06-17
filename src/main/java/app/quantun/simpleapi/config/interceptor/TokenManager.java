@@ -3,11 +3,10 @@ package app.quantun.simpleapi.config.interceptor;
 
 import app.quantun.simpleapi.config.external.auth.OAuthClient;
 import app.quantun.simpleapi.exception.CustomAuthException;
-import app.quantun.simpleapi.model.contract.request.AuthRequest;
 import app.quantun.simpleapi.model.contract.response.TokenResponse;
-import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
-import io.github.resilience4j.retry.annotation.Retry;
-import io.github.resilience4j.timelimiter.annotation.TimeLimiter;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import io.github.resilience4j.retry.RetryRegistry;
+import io.github.resilience4j.timelimiter.TimeLimiterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,12 +15,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 
 import java.time.Instant;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Supplier;
 
 /**
  * Service responsible for managing authentication tokens for external service calls.
@@ -46,12 +46,16 @@ public class TokenManager {
 
 
     public static final int NUMBER_OF_SECONDS_TO_VALIDATE_TOKEN = 30;
+    private final CircuitBreakerRegistry circuitBreakerRegistry;
+    private final RetryRegistry retryRegistry;
+    private final TimeLimiterRegistry timeLimiterRegistry;
+    private final ScheduledExecutorService resilienceExecutorService;
     private final OAuthClient oAuthClient;
     private final ReentrantLock refreshLock = new ReentrantLock();
     @Value("#{${app.server.external.oauth.headers}}")
     private Map<String, String> headersMap;
     @Value("${app.server.external.oauth.grant-type}")
-    private String getGrantType;
+    private String grantType;
     private String currentToken;
     private Instant expiresAt;
 
@@ -86,7 +90,7 @@ public class TokenManager {
                 return currentToken;
             }
 
-            log.info("Token expired or not present, requesting new token");
+            log.info("Token expired or not present, requesting new token from OAuth service");
             return refreshToken();
 
         } finally {
@@ -142,16 +146,17 @@ public class TokenManager {
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
         // Create body
-        String body = "grant_type=" + this.getGrantType;
+        String body = "grant_type=" + this.grantType;
 
         try {
             // Wait for the CompletableFuture to complete
-            ResponseEntity<TokenResponse> response = generateToken(headers, body).join();
+            ResponseEntity<TokenResponse> response = callBusinessLogicWithTimeLimiter(headers, body).join();
             currentToken = response.getBody().getAccess_token();
 
             // Calculate expiration based on requested expiration time
             expiresAt = Instant.now().plusSeconds(response.getBody().getExpires_in());
-            log.info("Token refreshed, valid until: {}", expiresAt);
+            log.info("Token successfully refreshed, valid until: {} (expires in {} seconds)", 
+                    expiresAt, response.getBody().getExpires_in());
 
             return currentToken;
         } catch (java.util.concurrent.CompletionException ex) {
@@ -162,56 +167,108 @@ public class TokenManager {
             } else if (cause instanceof RuntimeException) {
                 throw (RuntimeException) cause;
             } else {
-                throw new CustomAuthException("Failed to refresh token: " + ex.getMessage(), 
-                                             HttpStatus.INTERNAL_SERVER_ERROR, ex);
+                throw new CustomAuthException("Failed to refresh token: " + ex.getMessage(),
+                        HttpStatus.INTERNAL_SERVER_ERROR, ex);
             }
         }
     }
 
 
-    @CircuitBreaker(name = "authService", fallbackMethod = "authFallback")
-    @Retry(name = "authService")
-    @TimeLimiter(name = "authService")
-    public java.util.concurrent.CompletableFuture<ResponseEntity<TokenResponse>> generateToken(HttpHeaders headers, String body) {
-        return java.util.concurrent.CompletableFuture.supplyAsync(() -> {
-            // Special case for the timeout test
-            // This is a hack for the test case, in a real application we would configure proper timeouts
-            for (StackTraceElement element : Thread.currentThread().getStackTrace()) {
-                if (element.getMethodName().equals("shouldHandleTimeout")) {
-                    Exception cause = new java.util.concurrent.TimeoutException("Test timeout");
-                    throw new CustomAuthException("Request timed out", HttpStatus.REQUEST_TIMEOUT, cause);
-                }
-            }
+    /**
+     * Calls the token generation business logic with resilience patterns applied.
+     * 
+     * This method applies multiple resilience patterns:
+     * - Circuit breaker: Prevents repeated calls to failing services
+     * - Retry: Attempts to recover from transient failures
+     * - Time limiter: Sets a timeout for the operation
+     * 
+     * @param headers HTTP headers for the request
+     * @param body Request body content
+     * @return CompletableFuture containing the token response
+     */
+    public CompletableFuture<ResponseEntity<TokenResponse>> callBusinessLogicWithTimeLimiter(HttpHeaders headers, String body) {
+        // Get resilience components
+        io.github.resilience4j.circuitbreaker.CircuitBreaker circuitBreaker = 
+                circuitBreakerRegistry.circuitBreaker("authService");
+        io.github.resilience4j.retry.Retry retry = 
+                retryRegistry.retry("authService");
+        io.github.resilience4j.timelimiter.TimeLimiter timeLimiter = 
+                timeLimiterRegistry.timeLimiter("authService");
 
-            try {
-                ResponseEntity<TokenResponse> response = oAuthClient.getToken(headers, body);
+        log.debug("Preparing resilient token request with circuit breaker, retry, and time limiter");
 
-                // Handle empty response body
-                if (response.getBody() == null) {
-                    throw new CustomAuthException("Empty response body", HttpStatus.INTERNAL_SERVER_ERROR);
-                }
+        // Create the business logic supplier with retry and circuit breaker
+        Supplier<ResponseEntity<TokenResponse>> businessLogicSupplier = () -> 
+            retry.executeSupplier(() ->
+                circuitBreaker.executeSupplier(() -> 
+                    executeBusinessLogic(headers, body)
+                )
+            );
 
-                return response;
-            } catch (org.springframework.web.client.HttpClientErrorException.Unauthorized ex) {
-                throw new CustomAuthException(ex.getMessage(), HttpStatus.UNAUTHORIZED, ex);
-            } catch (org.springframework.web.client.HttpServerErrorException ex) {
-                throw new CustomAuthException(ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR, ex);
-            } catch (org.springframework.web.client.HttpClientErrorException ex) {
-                throw new CustomAuthException(ex.getMessage(), HttpStatus.BAD_REQUEST, ex);
-            } catch (Exception ex) {
-                if (ex.getMessage() != null && ex.getMessage().contains("timeout")) {
-                    throw new CustomAuthException("Request timed out", HttpStatus.REQUEST_TIMEOUT, ex);
-                }
-                throw new CustomAuthException(ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR, ex);
-            }
-        });
+        // Execute asynchronously
+        CompletableFuture<ResponseEntity<TokenResponse>> future = CompletableFuture
+                .supplyAsync(businessLogicSupplier, resilienceExecutorService);
+
+        // Apply time limiter and handle fallback
+        return timeLimiter.executeCompletionStage(resilienceExecutorService, () -> future)
+                .toCompletableFuture()
+                .handle((result, throwable) -> handleFallback(headers, body, result, throwable));
     }
 
-    public java.util.concurrent.CompletableFuture<ResponseEntity<TokenResponse>> authFallback(HttpHeaders headers, String body, Throwable t) {
-        log.error("TokenManager:AuthFallback {} ", t.getMessage());
-        return java.util.concurrent.CompletableFuture.failedFuture(
-            new CustomAuthException(t.getMessage(), HttpStatus.TOO_MANY_REQUESTS)
-        );
+    /**
+     * Executes the core business logic to obtain a token from the OAuth service.
+     * 
+     * @param headers HTTP headers for the request
+     * @param body Request body content
+     * @return Response containing the token information
+     * @throws CustomAuthException If the token request fails or returns empty response
+     */
+    private ResponseEntity<TokenResponse> executeBusinessLogic(HttpHeaders headers, String body) {
+        log.debug("Requesting token from OAuth service with grant type: {}", grantType);
+
+        ResponseEntity<TokenResponse> response = oAuthClient.getToken(headers, body);
+
+        // Handle empty response body
+        if (response.getBody() == null) {
+            log.error("OAuth service returned empty response body");
+            throw new CustomAuthException("OAuth service returned empty response body", HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+
+        log.debug("Successfully received token response with status: {}", response.getStatusCode());
+        return response;
+    }
+
+    /**
+     * Handles fallback scenarios when token generation encounters errors.
+     * 
+     * @param headers HTTP headers used in the request
+     * @param body Request body content
+     * @param result Response entity if successful
+     * @param throwable Exception that occurred, if any
+     * @return Response entity with token information
+     * @throws CustomAuthException When token generation fails
+     */
+    private ResponseEntity<TokenResponse> handleFallback(HttpHeaders headers, String body, ResponseEntity<TokenResponse> result, Throwable throwable) {
+        if (throwable == null) {
+            if (result == null) {
+                log.error("Token generation failed with null result and no exception");
+                throw new CustomAuthException("Token generation failed with null result", HttpStatus.INTERNAL_SERVER_ERROR);
+            }
+            return result;
+        }
+
+        String errorMessage = throwable.getMessage();
+        String requestInfo = String.format("Request [body: %s]", body);
+
+        if (throwable instanceof java.util.concurrent.TimeoutException) {
+            log.error("Token generation timed out: {}. {}", errorMessage, requestInfo);
+        } else if (throwable instanceof java.util.concurrent.RejectedExecutionException) {
+            log.error("Token generation request rejected: {}. {}", errorMessage, requestInfo);
+        } else {
+            log.error("Token generation failed with unexpected error: {}. {}", errorMessage, requestInfo);
+        }
+
+        throw new CustomAuthException(errorMessage, HttpStatus.TOO_MANY_REQUESTS);
     }
 
 
@@ -230,7 +287,11 @@ public class TokenManager {
      * which will trigger a refresh on the next call to {@link #getValidToken()}.
      */
     public void invalidateToken() {
-        log.info("Invalidating current token");
+        if (currentToken != null) {
+            log.info("Invalidating current token, was valid until: {}", expiresAt);
+        } else {
+            log.info("No active token to invalidate");
+        }
         currentToken = null;
         expiresAt = null;
     }

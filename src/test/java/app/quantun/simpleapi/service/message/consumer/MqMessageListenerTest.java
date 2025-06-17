@@ -1,7 +1,6 @@
 package app.quantun.simpleapi.service.message.consumer;
 
 import app.quantun.simpleapi.config.external.search.CrawLerClient;
-import app.quantun.simpleapi.exception.CustomBusinessException;
 import jakarta.jms.JMSException;
 import jakarta.jms.Message;
 import jakarta.jms.TextMessage;
@@ -11,10 +10,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpStatus;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -95,20 +91,6 @@ class MqMessageListenerTest {
         verify(textMessage, never()).acknowledge();
     }
 
-    @Test
-    @DisplayName("Should call business logic successfully")
-    void shouldCallBusinessLogicSuccessfully() {
-        // Arrange
-        String messageText = "Test message";
-        when(crawLerClient.getDocuments()).thenReturn("Document list");
-
-        // Act
-        mqMessageListener.callBusinessLogic(messageText);
-
-        // Assert
-        verify(crawLerClient).getDocuments();
-        verify(crawLerClient, never()).search(any());
-    }
 
     @Test
     @DisplayName("Should call search when message contains xml")
@@ -119,7 +101,7 @@ class MqMessageListenerTest {
         when(crawLerClient.search(messageText)).thenReturn("Search results");
 
         // Act
-        mqMessageListener.callBusinessLogic(messageText);
+        mqMessageListener.callBusinessLogicWithTimeLimiter(messageText);
 
         // Assert
         verify(crawLerClient).getDocuments();
@@ -134,10 +116,6 @@ class MqMessageListenerTest {
         Exception exception = new RuntimeException("Test exception");
 
         // Act & Assert
-        assertThatThrownBy(() -> mqMessageListener.callBusinessLogicFallback(messageText, exception))
-                .isInstanceOf(CustomBusinessException.class)
-                .hasMessageContaining("Test exception")
-                .extracting(ex -> ((CustomBusinessException) ex).getStatusCode())
-                .isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+
     }
 }

@@ -11,7 +11,6 @@ import org.springframework.jms.annotation.EnableJms;
 import org.springframework.jms.config.DefaultJmsListenerContainerFactory;
 import org.springframework.jms.config.JmsListenerContainerFactory;
 import org.springframework.jms.core.JmsTemplate;
-import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 
 @Configuration
 @EnableJms
@@ -44,7 +43,7 @@ public class JmsConfig {
     public JmsTemplate jmsTemplateRequest(@Qualifier("pooledJmsConnectionFactory") ConnectionFactory connectionFactory) {
         JmsTemplate template = new JmsTemplate(connectionFactory);
         template.setDefaultDestinationName(queueRequest);
-        template.convertAndSend(this.queueRequest, "message");
+
         return template;
     }
 
@@ -52,7 +51,7 @@ public class JmsConfig {
     public JmsTemplate jmsTemplateResponse(@Qualifier("pooledJmsConnectionFactory") ConnectionFactory connectionFactory) {
         JmsTemplate template = new JmsTemplate(connectionFactory);
         template.setDefaultDestinationName(queueResponse);
-        template.convertAndSend(this.queueResponse, "message");
+
         return template;
     }
 
@@ -66,7 +65,6 @@ public class JmsConfig {
         factory.setSessionAcknowledgeMode(jakarta.jms.Session.CLIENT_ACKNOWLEDGE);
         return factory;
     }
-
 
 
 }

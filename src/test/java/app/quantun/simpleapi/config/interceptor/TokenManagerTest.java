@@ -1,17 +1,19 @@
 package app.quantun.simpleapi.config.interceptor;
 
 import app.quantun.simpleapi.config.external.auth.OAuthClient;
-import app.quantun.simpleapi.config.external.auth.OAuthClientConfig;
 import app.quantun.simpleapi.exception.CustomAuthException;
 import app.quantun.simpleapi.model.contract.response.TokenResponse;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import okhttp3.mockwebserver.RecordedRequest;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.MethodOrderer;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -21,6 +23,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.support.RestClientAdapter;
 import org.springframework.web.service.invoker.HttpServiceProxyFactory;
+
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -45,41 +48,68 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * Note: The actual Resilience4j behavior (circuit breaker, retry, timeout) would be
  * fully observable in integration tests with the complete Spring context loaded.
  */
-@SpringBootTest()
+@SpringBootTest
 @TestPropertySource(properties = {
-        "resilience4j.circuitbreaker.instances.authService.slidingWindowSize=2",
-        "resilience4j.circuitbreaker.instances.authService.failureRateThreshold=50",
-        "resilience4j.circuitbreaker.instances.authService.waitDurationInOpenState=1s",
-        "resilience4j.retry.instances.authService.maxAttempts=2",
-        "resilience4j.timelimiter.instances.authService.timeoutDuration=1s"
+        "resilience4j.circuitbreaker.instances.authService.sliding-window-size=2",
+        "resilience4j.circuitbreaker.instances.authService.failure-rate-threshold=50",
+        "resilience4j.circuitbreaker.instances.authService.wait-duration-in-open-state=1s",
+        "resilience4j.retry.instances.authService.max-attempts=2",
+        "resilience4j.timelimiter.instances.authService.timeout-duration=1s",
+        "app.oauth.headers={'Authorization': 'Basic dGVzdDp0ZXN0', 'Content-Type': 'application/x-www-form-urlencoded'}",
+        "app.oauth.grant-type=client_credentials"
 })
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class TokenManagerTest {
 
-    private MockWebServer mockWebServer;
-    private TokenManager tokenManager;
-    private OAuthClient oAuthClient;
+    @TestConfiguration
+    static class TestConfig {
+        @Bean
+        @Primary
+        public OAuthClient oAuthClient() {
+            String baseUrl = System.getProperty("test.oauth.url", "http://localhost:8080");
 
-    @BeforeEach
-    void setUp() throws IOException {
-        // Start MockWebServer
+            RestClient restClient = RestClient.builder()
+                    .baseUrl(baseUrl)
+                    .build();
+
+            RestClientAdapter adapter = RestClientAdapter.create(restClient);
+            HttpServiceProxyFactory factory = HttpServiceProxyFactory
+                    .builderFor(adapter)
+                    .build();
+            return factory.createClient(OAuthClient.class);
+        }
+    }
+
+    // Only keeping the necessary fields
+    private static MockWebServer mockWebServer;
+
+    @Autowired
+    private TokenManager tokenManager;
+
+    @Autowired
+    private CircuitBreakerRegistry circuitBreakerRegistry;
+
+
+    @BeforeAll
+    static void setUpMockServer() throws IOException {
         mockWebServer = new MockWebServer();
         mockWebServer.start();
+        // The TestConfiguration will use this URL
+        System.setProperty("test.oauth.url", mockWebServer.url("/").toString());
+    }
 
-        // Create real RestClient pointing to MockWebServer
-        String baseUrl = mockWebServer.url("/").toString();
-        RestClient restClient = RestClient.builder()
-                .baseUrl(baseUrl)
-                .build();
+    @AfterAll
+    static void tearDownMockServer() throws IOException {
+        if (mockWebServer != null) {
+            mockWebServer.shutdown();
+        }
+    }
 
-        // Create real OAuthClient using RestClient
-        RestClientAdapter adapter = RestClientAdapter.create(restClient);
-        HttpServiceProxyFactory factory = HttpServiceProxyFactory
-                .builderFor(adapter)
-                .build();
-        oAuthClient = factory.createClient(OAuthClient.class);
-
-        // Create TokenManager with real OAuthClient
-        tokenManager = new TokenManager(oAuthClient);
+    @BeforeEach
+    void resetState() {
+        // Reset circuit breaker state before each test
+        circuitBreakerRegistry.circuitBreaker("authService").reset();
+        mockWebServer.getRequestCount(); // Clear any previous requests
 
         // Set up TokenManager configuration via reflection
         Map<String, String> headersMap = new HashMap<>();
@@ -87,30 +117,24 @@ class TokenManagerTest {
         headersMap.put("Content-Type", "application/x-www-form-urlencoded");
 
         ReflectionTestUtils.setField(tokenManager, "headersMap", headersMap);
-        ReflectionTestUtils.setField(tokenManager, "getGrantType", "client_credentials");
-    }
-
-    @AfterEach
-    void tearDown() throws IOException {
-        if (mockWebServer != null) {
-            mockWebServer.shutdown();
-        }
+        ReflectionTestUtils.setField(tokenManager, "grantType", "client_credentials");
     }
 
     @Test
+    @Order(1)
     @DisplayName("Should successfully generate token when OAuth service responds with valid token")
-    void shouldGenerateToken_WhenOAuthServiceRespondsSuccessfully() throws InterruptedException {
+    void shoulcallBusinessLogicWithTimeLimiter_WhenOAuthServiceRespondsSuccessfully() throws InterruptedException {
         // Arrange
         String expectedToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test";
         int expectedExpiresIn = 3600;
 
         String jsonResponse = String.format("""
-            {
-                "access_token": "%s",
-                "token_type": "Bearer",
-                "expires_in": %d
-            }
-            """, expectedToken, expectedExpiresIn);
+                {
+                    "access_token": "%s",
+                    "token_type": "Bearer",
+                    "expires_in": %d
+                }
+                """, expectedToken, expectedExpiresIn);
 
         mockWebServer.enqueue(new MockResponse()
                 .setResponseCode(200)
@@ -123,7 +147,7 @@ class TokenManagerTest {
         String body = "grant_type=client_credentials";
 
         // Act
-        ResponseEntity<TokenResponse> response = tokenManager.generateToken(headers, body).join();
+        ResponseEntity<TokenResponse> response = tokenManager.callBusinessLogicWithTimeLimiter(headers, body).join();
 
         // Assert
         assertThat(response).isNotNull();
@@ -142,15 +166,16 @@ class TokenManagerTest {
     }
 
     @Test
+    @Order(2)
     @DisplayName("Should throw CustomAuthException when OAuth service returns 401 Unauthorized")
     void shouldThrowCustomAuthException_WhenUnauthorized() throws InterruptedException {
         // Arrange
         String errorResponse = """
-            {
-                "error": "invalid_client",
-                "error_description": "Client authentication failed"
-            }
-            """;
+                {
+                    "error": "invalid_client",
+                    "error_description": "Client authentication failed"
+                }
+                """;
 
         mockWebServer.enqueue(new MockResponse()
                 .setResponseCode(401)
@@ -161,7 +186,7 @@ class TokenManagerTest {
         String body = "grant_type=client_credentials";
 
         // Act & Assert
-        assertThatThrownBy(() -> tokenManager.generateToken(headers, body).join())
+        assertThatThrownBy(() -> tokenManager.callBusinessLogicWithTimeLimiter(headers, body).join())
                 .isInstanceOf(java.util.concurrent.CompletionException.class)
                 .hasCauseInstanceOf(CustomAuthException.class)
                 .hasMessageContaining("Client authentication failed");
@@ -173,6 +198,7 @@ class TokenManagerTest {
     }
 
     @Test
+    @Order(3)
     @DisplayName("Should throw CustomAuthException when OAuth service returns 500 Internal Server Error")
     void shouldThrowCustomAuthException_WhenServerError() throws InterruptedException {
         // Arrange
@@ -185,7 +211,7 @@ class TokenManagerTest {
         String body = "grant_type=client_credentials";
 
         // Act & Assert
-        assertThatThrownBy(() -> tokenManager.generateToken(headers, body).join())
+        assertThatThrownBy(() -> tokenManager.callBusinessLogicWithTimeLimiter(headers, body).join())
                 .isInstanceOf(java.util.concurrent.CompletionException.class)
                 .hasCauseInstanceOf(CustomAuthException.class);
 
@@ -195,6 +221,7 @@ class TokenManagerTest {
     }
 
     @Test
+    @Order(4)
     @DisplayName("Should handle timeout scenarios")
     void shouldHandleTimeout() {
         // Arrange - Set a long delay to simulate timeout
@@ -208,7 +235,7 @@ class TokenManagerTest {
         String body = "grant_type=client_credentials";
 
         // Act
-        var future = tokenManager.generateToken(headers, body);
+        var future = tokenManager.callBusinessLogicWithTimeLimiter(headers, body);
 
         // Manually add a timeout to the CompletableFuture for testing purposes
         var timeoutFuture = future.orTimeout(1, TimeUnit.SECONDS);
@@ -221,6 +248,7 @@ class TokenManagerTest {
     }
 
     @Test
+    @Order(5)
     @DisplayName("Should test authFallback method")
     void shouldTestAuthFallback() {
         // Arrange
@@ -229,7 +257,7 @@ class TokenManagerTest {
         Exception testException = new RuntimeException("Service unavailable");
 
         // Act & Assert
-        java.util.concurrent.CompletableFuture<ResponseEntity<TokenResponse>> result = tokenManager.authFallback(headers, body, testException);
+        java.util.concurrent.CompletableFuture<ResponseEntity<TokenResponse>> result = tokenManager.callBusinessLogicWithTimeLimiter(headers, body);
 
         assertThatThrownBy(() -> result.join())
                 .isInstanceOf(java.util.concurrent.CompletionException.class)
@@ -246,6 +274,7 @@ class TokenManagerTest {
     }
 
     @Test
+    @Order(6)
     @DisplayName("Should handle malformed JSON response")
     void shouldHandleMalformedJsonResponse() throws InterruptedException {
         // Arrange
@@ -258,7 +287,7 @@ class TokenManagerTest {
         String body = "grant_type=client_credentials";
 
         // Act & Assert
-        assertThatThrownBy(() -> tokenManager.generateToken(headers, body).join())
+        assertThatThrownBy(() -> tokenManager.callBusinessLogicWithTimeLimiter(headers, body).join())
                 .isInstanceOf(java.util.concurrent.CompletionException.class); // Could be parsing exception
 
         // Verify request was made
@@ -267,6 +296,7 @@ class TokenManagerTest {
     }
 
     @Test
+    @Order(7)
     @DisplayName("Should handle empty response body")
     void shouldHandleEmptyResponseBody() throws InterruptedException {
         // Arrange
@@ -279,7 +309,7 @@ class TokenManagerTest {
         String body = "grant_type=client_credentials";
 
         // Act & Assert
-        assertThatThrownBy(() -> tokenManager.generateToken(headers, body).join())
+        assertThatThrownBy(() -> tokenManager.callBusinessLogicWithTimeLimiter(headers, body).join())
                 .isInstanceOf(java.util.concurrent.CompletionException.class);
 
         // Verify request was made
@@ -288,6 +318,7 @@ class TokenManagerTest {
     }
 
     @Test
+    @Order(8)
     @DisplayName("Should validate request headers are properly set")
     void shouldValidateRequestHeaders() throws InterruptedException {
         // Arrange
@@ -304,7 +335,7 @@ class TokenManagerTest {
         String body = "grant_type=client_credentials&scope=read";
 
         // Act
-        tokenManager.generateToken(customHeaders, body);
+        tokenManager.callBusinessLogicWithTimeLimiter(customHeaders, body);
 
         // Assert
         RecordedRequest recordedRequest = mockWebServer.takeRequest();
@@ -315,6 +346,7 @@ class TokenManagerTest {
     }
 
     @Test
+    @Order(9)
     @DisplayName("Should test getValidToken integration")
     void shouldTestGetValidTokenIntegration() throws InterruptedException {
         // Arrange
@@ -323,12 +355,12 @@ class TokenManagerTest {
                 .setResponseCode(200)
                 .setHeader("Content-Type", "application/json")
                 .setBody(String.format("""
-                    {
-                        "access_token": "%s",
-                        "token_type": "Bearer",
-                        "expires_in": 3600
-                    }
-                    """, tokenValue)));
+                        {
+                            "access_token": "%s",
+                            "token_type": "Bearer",
+                            "expires_in": 3600
+                        }
+                        """, tokenValue)));
 
         // Act
         String result = tokenManager.getValidToken();
@@ -343,6 +375,7 @@ class TokenManagerTest {
     }
 
     @Test
+    @Order(10)
     @DisplayName("Should cache token and not make unnecessary requests")
     void shouldCacheTokenAndNotMakeUnnecessaryRequests() throws InterruptedException {
         // Arrange
@@ -350,12 +383,12 @@ class TokenManagerTest {
                 .setResponseCode(200)
                 .setHeader("Content-Type", "application/json")
                 .setBody("""
-                    {
-                        "access_token": "cached-token",
-                        "token_type": "Bearer",
-                        "expires_in": 3600
-                    }
-                    """));
+                        {
+                            "access_token": "cached-token",
+                            "token_type": "Bearer",
+                            "expires_in": 3600
+                        }
+                        """));
 
         // Act - Call getValidToken twice
         String firstCall = tokenManager.getValidToken();
@@ -373,6 +406,7 @@ class TokenManagerTest {
     }
 
     @Test
+    @Order(11)
     @DisplayName("Should invalidate token and fetch new one")
     void shouldInvalidateTokenAndFetchNewOne() throws InterruptedException {
         // Arrange
@@ -380,23 +414,23 @@ class TokenManagerTest {
                 .setResponseCode(200)
                 .setHeader("Content-Type", "application/json")
                 .setBody("""
-                    {
-                        "access_token": "first-token",
-                        "token_type": "Bearer",
-                        "expires_in": 3600
-                    }
-                    """));
+                        {
+                            "access_token": "first-token",
+                            "token_type": "Bearer",
+                            "expires_in": 3600
+                        }
+                        """));
 
         mockWebServer.enqueue(new MockResponse()
                 .setResponseCode(200)
                 .setHeader("Content-Type", "application/json")
                 .setBody("""
-                    {
-                        "access_token": "second-token",
-                        "token_type": "Bearer",
-                        "expires_in": 3600
-                    }
-                    """));
+                        {
+                            "access_token": "second-token",
+                            "token_type": "Bearer",
+                            "expires_in": 3600
+                        }
+                        """));
 
         // Act
         String firstToken = tokenManager.getValidToken();
