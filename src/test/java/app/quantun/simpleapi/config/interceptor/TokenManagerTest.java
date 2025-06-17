@@ -8,27 +8,22 @@ import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import okhttp3.mockwebserver.RecordedRequest;
 import org.junit.jupiter.api.*;
-import org.junit.jupiter.api.MethodOrderer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.util.ReflectionTestUtils;
-import org.springframework.web.client.RestClient;
-import org.springframework.web.client.support.RestClientAdapter;
-import org.springframework.web.service.invoker.HttpServiceProxyFactory;
-
 
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -61,28 +56,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class TokenManagerTest {
 
-    @TestConfiguration
-    static class TestConfig {
-        @Bean
-        @Primary
-        public OAuthClient oAuthClient() {
-            String baseUrl = System.getProperty("test.oauth.url", "http://localhost:8080");
-
-            RestClient restClient = RestClient.builder()
-                    .baseUrl(baseUrl)
-                    .build();
-
-            RestClientAdapter adapter = RestClientAdapter.create(restClient);
-            HttpServiceProxyFactory factory = HttpServiceProxyFactory
-                    .builderFor(adapter)
-                    .build();
-            return factory.createClient(OAuthClient.class);
-        }
-    }
-
-    // Only keeping the necessary fields
     private static MockWebServer mockWebServer;
-
+    @MockitoBean
+    private OAuthClient oAuthClient;
     @Autowired
     private TokenManager tokenManager;
 
@@ -94,7 +70,6 @@ class TokenManagerTest {
     static void setUpMockServer() throws IOException {
         mockWebServer = new MockWebServer();
         mockWebServer.start();
-        // The TestConfiguration will use this URL
         System.setProperty("test.oauth.url", mockWebServer.url("/").toString());
     }
 
@@ -107,11 +82,11 @@ class TokenManagerTest {
 
     @BeforeEach
     void resetState() {
-        // Reset circuit breaker state before each test
         circuitBreakerRegistry.circuitBreaker("authService").reset();
-        mockWebServer.getRequestCount(); // Clear any previous requests
+        // The following line doesn't clear requests but gets the count.
+        // It's generally harmless if tests manage their enqueued responses and consumed requests correctly.
+        mockWebServer.getRequestCount();
 
-        // Set up TokenManager configuration via reflection
         Map<String, String> headersMap = new HashMap<>();
         headersMap.put("Authorization", "Basic dGVzdDp0ZXN0");
         headersMap.put("Content-Type", "application/x-www-form-urlencoded");
@@ -123,7 +98,7 @@ class TokenManagerTest {
     @Test
     @Order(1)
     @DisplayName("Should successfully generate token when OAuth service responds with valid token")
-    void shoulcallBusinessLogicWithTimeLimiter_WhenOAuthServiceRespondsSuccessfully() throws InterruptedException {
+    void shouldCallBusinessLogicWithTimeLimiter_WhenOAuthServiceRespondsSuccessfully() throws InterruptedException {
         // Arrange
         String expectedToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test";
         int expectedExpiresIn = 3600;
@@ -156,7 +131,6 @@ class TokenManagerTest {
         assertThat(response.getBody().getAccess_token()).isEqualTo(expectedToken);
         assertThat(response.getBody().getExpires_in()).isEqualTo(expectedExpiresIn);
 
-        // Verify the request was made correctly
         RecordedRequest recordedRequest = mockWebServer.takeRequest();
         assertThat(recordedRequest.getMethod()).isEqualTo("POST");
         assertThat(recordedRequest.getPath()).isEqualTo("/oauth2/token");
@@ -187,11 +161,10 @@ class TokenManagerTest {
 
         // Act & Assert
         assertThatThrownBy(() -> tokenManager.callBusinessLogicWithTimeLimiter(headers, body).join())
-                .isInstanceOf(java.util.concurrent.CompletionException.class)
+                .isInstanceOf(CompletionException.class)
                 .hasCauseInstanceOf(CustomAuthException.class)
-                .hasMessageContaining("Client authentication failed");
+                .hasMessageContaining("Client authentication failed"); // This checks CompletionException message which often includes cause's message
 
-        // Verify request was made
         RecordedRequest recordedRequest = mockWebServer.takeRequest();
         assertThat(recordedRequest.getMethod()).isEqualTo("POST");
         assertThat(recordedRequest.getPath()).isEqualTo("/oauth2/token");
@@ -212,24 +185,23 @@ class TokenManagerTest {
 
         // Act & Assert
         assertThatThrownBy(() -> tokenManager.callBusinessLogicWithTimeLimiter(headers, body).join())
-                .isInstanceOf(java.util.concurrent.CompletionException.class)
+                .isInstanceOf(CompletionException.class)
                 .hasCauseInstanceOf(CustomAuthException.class);
 
-        // Verify request was made
         RecordedRequest recordedRequest = mockWebServer.takeRequest();
         assertThat(recordedRequest.getMethod()).isEqualTo("POST");
     }
 
     @Test
     @Order(4)
-    @DisplayName("Should handle timeout scenarios")
+    @DisplayName("Should handle timeout scenarios with Resilience4j TimeLimiter")
     void shouldHandleTimeout() {
-        // Arrange - Set a long delay to simulate timeout
+        // Arrange - Set a delay longer than the configured TimeLimiter duration (1s)
         mockWebServer.enqueue(new MockResponse()
                 .setResponseCode(200)
                 .setHeader("Content-Type", "application/json")
                 .setBody("{\"access_token\": \"token\", \"expires_in\": 3600}")
-                .setBodyDelay(5, TimeUnit.SECONDS)); // 5 second delay
+                .setBodyDelay(2, TimeUnit.SECONDS)); // 2s delay > 1s TimeLimiter config
 
         HttpHeaders headers = new HttpHeaders();
         String body = "grant_type=client_credentials";
@@ -237,40 +209,38 @@ class TokenManagerTest {
         // Act
         var future = tokenManager.callBusinessLogicWithTimeLimiter(headers, body);
 
-        // Manually add a timeout to the CompletableFuture for testing purposes
-        var timeoutFuture = future.orTimeout(1, TimeUnit.SECONDS);
-
         // Assert
-        // This should timeout and throw a CompletionException with a TimeoutException cause
-        assertThatThrownBy(() -> timeoutFuture.join())
-                .isInstanceOf(java.util.concurrent.CompletionException.class)
-                .hasCauseInstanceOf(java.util.concurrent.TimeoutException.class);
+        // The future should complete exceptionally with TimeoutException due to Resilience4j TimeLimiter
+        assertThatThrownBy(future::join)
+                .isInstanceOf(CompletionException.class)
+                .hasCauseInstanceOf(TimeoutException.class);
     }
 
     @Test
     @Order(5)
-    @DisplayName("Should test authFallback method")
+    @DisplayName("Should test authFallback method behavior")
     void shouldTestAuthFallback() {
-        // Arrange
+        // Arrange: No response enqueued, so HTTP calls will fail, triggering retries and then fallback.
         HttpHeaders headers = new HttpHeaders();
         String body = "grant_type=client_credentials";
-        Exception testException = new RuntimeException("Service unavailable");
 
-        // Act & Assert
-        java.util.concurrent.CompletableFuture<ResponseEntity<TokenResponse>> result = tokenManager.callBusinessLogicWithTimeLimiter(headers, body);
+        // Act
+        java.util.concurrent.CompletableFuture<ResponseEntity<TokenResponse>> result =
+                tokenManager.callBusinessLogicWithTimeLimiter(headers, body);
 
-        assertThatThrownBy(() -> result.join())
-                .isInstanceOf(java.util.concurrent.CompletionException.class)
-                .hasCauseInstanceOf(CustomAuthException.class)
-                .hasMessageContaining("Service unavailable");
-
-        // Verify the cause has the expected status code
-        try {
-            result.join();
-        } catch (java.util.concurrent.CompletionException ex) {
-            CustomAuthException authEx = (CustomAuthException) ex.getCause();
-            assertThat(authEx.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
-        }
+        // Assert
+        assertThatThrownBy(result::join)
+                .isInstanceOf(CompletionException.class)
+                .satisfies(completionEx -> {
+                    Throwable cause = completionEx.getCause();
+                    assertThat(cause).isInstanceOf(CustomAuthException.class);
+                    CustomAuthException authEx = (CustomAuthException) cause;
+                    assertThat(authEx.getMessage()).contains("Service unavailable");
+                    assertThat(authEx.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+                });
+        // You might want to verify mockWebServer.getRequestCount() to ensure retries happened if that's part of the fallback trigger.
+        // For example, if retry is 2 attempts: assertThat(mockWebServer.getRequestCount()).isEqualTo(2);
+        // This depends on how MockWebServer handles requests with no enqueued responses (e.g., if it serves 404s that are recorded).
     }
 
     @Test
@@ -288,9 +258,8 @@ class TokenManagerTest {
 
         // Act & Assert
         assertThatThrownBy(() -> tokenManager.callBusinessLogicWithTimeLimiter(headers, body).join())
-                .isInstanceOf(java.util.concurrent.CompletionException.class); // Could be parsing exception
+                .isInstanceOf(CompletionException.class); // Specific cause could be a JSON parsing exception
 
-        // Verify request was made
         RecordedRequest recordedRequest = mockWebServer.takeRequest();
         assertThat(recordedRequest.getMethod()).isEqualTo("POST");
     }
@@ -310,9 +279,8 @@ class TokenManagerTest {
 
         // Act & Assert
         assertThatThrownBy(() -> tokenManager.callBusinessLogicWithTimeLimiter(headers, body).join())
-                .isInstanceOf(java.util.concurrent.CompletionException.class);
+                .isInstanceOf(CompletionException.class);
 
-        // Verify request was made
         RecordedRequest recordedRequest = mockWebServer.takeRequest();
         assertThat(recordedRequest.getMethod()).isEqualTo("POST");
     }
@@ -335,7 +303,7 @@ class TokenManagerTest {
         String body = "grant_type=client_credentials&scope=read";
 
         // Act
-        tokenManager.callBusinessLogicWithTimeLimiter(customHeaders, body);
+        tokenManager.callBusinessLogicWithTimeLimiter(customHeaders, body).join(); // Ensure async call completes
 
         // Assert
         RecordedRequest recordedRequest = mockWebServer.takeRequest();
@@ -368,7 +336,6 @@ class TokenManagerTest {
         // Assert
         assertThat(result).isEqualTo(tokenValue);
 
-        // Verify request was made to get the token
         RecordedRequest recordedRequest = mockWebServer.takeRequest();
         assertThat(recordedRequest.getMethod()).isEqualTo("POST");
         assertThat(recordedRequest.getPath()).isEqualTo("/oauth2/token");
@@ -390,25 +357,23 @@ class TokenManagerTest {
                         }
                         """));
 
-        // Act - Call getValidToken twice
+        // Act
         String firstCall = tokenManager.getValidToken();
         String secondCall = tokenManager.getValidToken();
 
         // Assert
         assertThat(firstCall).isEqualTo("cached-token");
         assertThat(secondCall).isEqualTo("cached-token");
-
-        // Verify only one request was made (token was cached)
         assertThat(mockWebServer.getRequestCount()).isEqualTo(1);
 
-        RecordedRequest recordedRequest = mockWebServer.takeRequest();
+        RecordedRequest recordedRequest = mockWebServer.takeRequest(); // Verify the single request
         assertThat(recordedRequest.getMethod()).isEqualTo("POST");
     }
 
     @Test
     @Order(11)
     @DisplayName("Should invalidate token and fetch new one")
-    void shouldInvalidateTokenAndFetchNewOne() throws InterruptedException {
+    void shouldInvalidateTokenAndFetchNewOne() { // Removed InterruptedException as takeRequest is not called
         // Arrange
         mockWebServer.enqueue(new MockResponse()
                 .setResponseCode(200)
@@ -441,5 +406,7 @@ class TokenManagerTest {
         assertThat(firstToken).isEqualTo("first-token");
         assertThat(secondToken).isEqualTo("second-token");
         assertThat(mockWebServer.getRequestCount()).isEqualTo(2);
+        // If you need to verify the content of these two requests, you'd use takeRequest() twice
+        // and then this method would need `throws InterruptedException`.
     }
 }

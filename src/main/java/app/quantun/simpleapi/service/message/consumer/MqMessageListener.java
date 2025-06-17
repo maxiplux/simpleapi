@@ -119,8 +119,8 @@ public class MqMessageListener {
      */
     public CompletableFuture<Boolean> callBusinessLogicWithTimeLimiter(String messageText) {
         // Check if we're in a test environment (resilience dependencies are null)
-        if (circuitBreakerRegistry == null || retryRegistry == null || 
-            timeLimiterRegistry == null || resilienceExecutorService == null) {
+        if (circuitBreakerRegistry == null || retryRegistry == null ||
+                timeLimiterRegistry == null || resilienceExecutorService == null) {
             log.debug("Running in test environment with simplified resilience implementation");
             // Simplified implementation for tests - directly execute business logic
             try {
@@ -139,12 +139,12 @@ public class MqMessageListener {
         TimeLimiter timeLimiter = timeLimiterRegistry.timeLimiter("businessService");
 
         // Create the business logic supplier with resilience patterns
-        Supplier<Boolean> businessLogicSupplier = () -> 
-            retry.executeSupplier(() ->
-                circuitBreaker.executeSupplier(() -> 
-                    executeBusinessLogic(messageText)
-                )
-            );
+        Supplier<Boolean> businessLogicSupplier = () ->
+                retry.executeSupplier(() ->
+                        circuitBreaker.executeSupplier(() ->
+                                executeBusinessLogic(messageText)
+                        )
+                );
 
         // Execute with time limiter
         CompletableFuture<Boolean> future = CompletableFuture
@@ -152,8 +152,8 @@ public class MqMessageListener {
 
         return timeLimiter.executeCompletionStage(resilienceExecutorService, () -> future)
                 .toCompletableFuture()
-                .handle((result, throwable) -> 
-                    handleResilienceResult(messageText, result, throwable)
+                .handle((result, throwable) ->
+                        handleResilienceResult(messageText, result, throwable)
                 );
     }
 
@@ -182,8 +182,8 @@ public class MqMessageListener {
      * Provides appropriate logging and fallback behavior for different failure scenarios.
      *
      * @param messageText The original message text
-     * @param result The result of the business logic execution (if successful)
-     * @param throwable The exception that occurred (if any)
+     * @param result      The result of the business logic execution (if successful)
+     * @param throwable   The exception that occurred (if any)
      * @return true if successful, false if an error occurred
      */
     private Boolean handleResilienceResult(String messageText, Boolean result, Throwable throwable) {
@@ -194,14 +194,14 @@ public class MqMessageListener {
 
         // Log specific error types with appropriate context
         if (throwable instanceof TimeoutException) {
-            log.error("Timeout occurred while processing message ❌❌❌❌❌❌❌'{}': {}", createXmlPreview(messageText,200), throwable.getMessage());
+            log.error("Timeout occurred while processing message ❌❌❌❌❌❌❌'{}': {}", createXmlPreview(messageText, 200), throwable.getMessage());
         } else if (throwable instanceof RejectedExecutionException) {
-            log.error("Execution rejected for message ❗❗❗❗❗❗❗❗❗❗❗❗❗❗❗❗'{}': {}", createXmlPreview(messageText,200), throwable.getMessage());
+            log.error("Execution rejected for message ❗❗❗❗❗❗❗❗❗❗❗❗❗❗❗❗'{}': {}", createXmlPreview(messageText, 200), throwable.getMessage());
         } else {
-            log.error("An error occurred while processing message ❌❌❌❌❌❌❌'{}': {}", createXmlPreview(messageText,200), throwable.getMessage());
+            log.error("An error occurred while processing message ❌❌❌❌❌❌❌'{}': {}", createXmlPreview(messageText, 200), throwable.getMessage());
         }
 
-        log.warn("Fallback triggered for message '{}'", createXmlPreview(messageText,200));
+        log.warn("Fallback triggered for message '{}'", createXmlPreview(messageText, 200));
         return false; // Indicates failure
     }
 

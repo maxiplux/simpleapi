@@ -155,7 +155,7 @@ public class TokenManager {
 
             // Calculate expiration based on requested expiration time
             expiresAt = Instant.now().plusSeconds(response.getBody().getExpires_in());
-            log.info("Token successfully refreshed, valid until: {} (expires in {} seconds)", 
+            log.info("Token successfully refreshed, valid until: {} (expires in {} seconds)",
                     expiresAt, response.getBody().getExpires_in());
 
             return currentToken;
@@ -176,34 +176,34 @@ public class TokenManager {
 
     /**
      * Calls the token generation business logic with resilience patterns applied.
-     * 
+     * <p>
      * This method applies multiple resilience patterns:
      * - Circuit breaker: Prevents repeated calls to failing services
      * - Retry: Attempts to recover from transient failures
      * - Time limiter: Sets a timeout for the operation
-     * 
+     *
      * @param headers HTTP headers for the request
-     * @param body Request body content
+     * @param body    Request body content
      * @return CompletableFuture containing the token response
      */
     public CompletableFuture<ResponseEntity<TokenResponse>> callBusinessLogicWithTimeLimiter(HttpHeaders headers, String body) {
         // Get resilience components
-        io.github.resilience4j.circuitbreaker.CircuitBreaker circuitBreaker = 
+        io.github.resilience4j.circuitbreaker.CircuitBreaker circuitBreaker =
                 circuitBreakerRegistry.circuitBreaker("authService");
-        io.github.resilience4j.retry.Retry retry = 
+        io.github.resilience4j.retry.Retry retry =
                 retryRegistry.retry("authService");
-        io.github.resilience4j.timelimiter.TimeLimiter timeLimiter = 
+        io.github.resilience4j.timelimiter.TimeLimiter timeLimiter =
                 timeLimiterRegistry.timeLimiter("authService");
 
         log.debug("Preparing resilient token request with circuit breaker, retry, and time limiter");
 
         // Create the business logic supplier with retry and circuit breaker
-        Supplier<ResponseEntity<TokenResponse>> businessLogicSupplier = () -> 
-            retry.executeSupplier(() ->
-                circuitBreaker.executeSupplier(() -> 
-                    executeBusinessLogic(headers, body)
-                )
-            );
+        Supplier<ResponseEntity<TokenResponse>> businessLogicSupplier = () ->
+                retry.executeSupplier(() ->
+                        circuitBreaker.executeSupplier(() ->
+                                executeBusinessLogic(headers, body)
+                        )
+                );
 
         // Execute asynchronously
         CompletableFuture<ResponseEntity<TokenResponse>> future = CompletableFuture
@@ -217,9 +217,9 @@ public class TokenManager {
 
     /**
      * Executes the core business logic to obtain a token from the OAuth service.
-     * 
+     *
      * @param headers HTTP headers for the request
-     * @param body Request body content
+     * @param body    Request body content
      * @return Response containing the token information
      * @throws CustomAuthException If the token request fails or returns empty response
      */
@@ -240,10 +240,10 @@ public class TokenManager {
 
     /**
      * Handles fallback scenarios when token generation encounters errors.
-     * 
-     * @param headers HTTP headers used in the request
-     * @param body Request body content
-     * @param result Response entity if successful
+     *
+     * @param headers   HTTP headers used in the request
+     * @param body      Request body content
+     * @param result    Response entity if successful
      * @param throwable Exception that occurred, if any
      * @return Response entity with token information
      * @throws CustomAuthException When token generation fails
