@@ -69,6 +69,8 @@ public class MqMessageListener {
                         message.acknowledge();
                         log.info("Message successfully processed and acknowledged: (\uD83D\uDC9A {}", messageId);
                     } else {
+                        message.setJMSRedelivered(true);
+
                         log.warn("Message processing failed, not acknowledging: ❌)❌)❌)❌)❌)❌)❌)❌)❌) {}", messageId);
                     }
                 } else {
@@ -101,9 +103,10 @@ public class MqMessageListener {
                 return false;
             }
 
+            return false;
             // Get the result (will block until complete)
-            Boolean result = future.get();
-            return result != null && result;
+            //Boolean result = future.get();
+            //return result != null && result;
         } catch (Exception e) {
             log.error("Failed to process message: {}", e.getMessage());
             return false;
