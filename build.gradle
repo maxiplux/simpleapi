@@ -84,6 +84,10 @@ dependencies {
     // Make sure you have AssertJ for fluent assertions
     testImplementation 'org.assertj:assertj-core:3.24.2'
 
+
+    implementation 'org.springframework.retry:spring-retry'
+    implementation 'org.springframework.boot:spring-boot-starter-aop'
+
 }
 
 tasks.named('test') {

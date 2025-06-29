@@ -42,4 +42,4 @@ services:
 
 volumes:
   mq-data:
-    name: ibm-mq-data
+    name: ibm-mq-data2

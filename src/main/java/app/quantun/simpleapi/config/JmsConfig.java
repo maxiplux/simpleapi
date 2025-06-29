@@ -78,7 +78,7 @@ public class JmsConfig {
 
         // CRITICAL: Prevent automatic acknowledgment on exceptions
         factory.setErrorHandler(throwable -> {
-            log.error("Error in JMS listener (message will NOT be acknowledged): {}", throwable.getMessage(), throwable);
+            log.error("\uD83D\uDED1❗Error in JMS listener (message will NOT be acknowledged): {} \uD83D\uDED1❗", throwable.getMessage());
             // Don't acknowledge - let message remain on queue
             // Do NOT rethrow the exception as it might trigger auto-acknowledgment
         });
@@ -96,5 +96,29 @@ public class JmsConfig {
         return factory;
     }
 
+    @Bean("autoAckContainerFactory")
+    public JmsListenerContainerFactory<?> autoAckContainerFactory(
+            @Qualifier("pooledJmsConnectionFactory") ConnectionFactory connectionFactory) {
+        DefaultJmsListenerContainerFactory factory = new DefaultJmsListenerContainerFactory();
+        factory.setConnectionFactory(connectionFactory);
+        factory.setSessionAcknowledgeMode(Session.AUTO_ACKNOWLEDGE); // Auto ACK
+        factory.setSessionTransacted(false);
+        factory.setConcurrency("1-5");
 
+        log.info("Auto ACK JmsListenerContainerFactory configured");
+        return factory;
+    }
+
+    @Bean("transactedContainerFactory")
+    public JmsListenerContainerFactory<?> transactedContainerFactory(
+            @Qualifier("pooledJmsConnectionFactory") ConnectionFactory connectionFactory) {
+        DefaultJmsListenerContainerFactory factory = new DefaultJmsListenerContainerFactory();
+        factory.setConnectionFactory(connectionFactory);
+        factory.setSessionTransacted(true); // Transacted sessions
+        factory.setSessionAcknowledgeMode(Session.SESSION_TRANSACTED);
+        factory.setConcurrency("1-3");
+
+        log.info("Transacted JmsListenerContainerFactory configured");
+        return factory;
+    }
 }

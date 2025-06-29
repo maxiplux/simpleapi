@@ -1,32 +1,20 @@
 package app.quantun.simpleapi.config.metric;
 
 import com.ibm.mq.MQException;
-import com.ibm.mq.MQMessage;
 import com.ibm.mq.MQQueue;
 import com.ibm.mq.MQQueueManager;
 import com.ibm.mq.constants.CMQC;
-import com.ibm.mq.constants.CMQCFC;
-import com.ibm.mq.headers.pcf.PCFAgent;
-import com.ibm.mq.headers.pcf.PCFMessage;
-import com.ibm.mq.headers.pcf.PCFParameter;
-import com.ibm.mq.headers.pcf.MQCFIN;
-import com.ibm.mq.headers.pcf.MQCFST;
-import io.micrometer.core.instrument.Gauge;
-import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.boot.actuate.health.HealthIndicator;
 import org.springframework.stereotype.Component;
 
-import java.util.Map;
-
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class MQQueueMetrics implements HealthIndicator {
+public class MQQueueHealthIndicator implements HealthIndicator {
 
     private final MQQueueManager mqQueueManager;
 
@@ -35,6 +23,13 @@ public class MQQueueMetrics implements HealthIndicator {
 
     @Value("${ibm.mq.queue.name.request}")
     private String requestQueueName;
+
+
+    @Value("${ibm.mq.queue.dlq.name.response}")
+    private String responseQueueDLQName;
+
+    @Value("${ibm.mq.queue.dlq.name.request}")
+    private String requestQueueDLQName;
 
     public int getQueueDepth(String queueName) {
         MQQueue queue = null;
@@ -45,6 +40,7 @@ public class MQQueueMetrics implements HealthIndicator {
 
             // Get current queue depth
             int depth = queue.getCurrentDepth();
+
             log.debug("Queue '{}' current depth: {}", queueName, depth);
             return depth;
 
@@ -88,23 +84,13 @@ public class MQQueueMetrics implements HealthIndicator {
                         .build();
             }
 
-            // Check request queue
-            int requestDepth = getQueueDepth(requestQueueName);
-            if (requestDepth >= 0) {
-                healthBuilder.withDetail("requestQueue", requestDepth);
-            } else {
-                healthBuilder.withDetail("requestQueue", "ACCESS_DENIED_OR_ERROR");
-            }
 
-            // Check response queue
-            int responseDepth = getQueueDepth(responseQueueName);
-            if (responseDepth >= 0) {
-                healthBuilder.withDetail("responseQueue", responseDepth);
-            } else {
-                healthBuilder.withDetail("responseQueue", "ACCESS_DENIED_OR_ERROR");
-                // Don't fail health check for auth issues, just report the problem
-                healthBuilder.withDetail("warning", "Authentication or permission issues detected");
-            }
+            createHealthEntry(this.requestQueueName, healthBuilder);
+            createHealthEntry(this.requestQueueDLQName, healthBuilder);
+
+
+            createHealthEntry(this.responseQueueName, healthBuilder);
+            createHealthEntry(this.responseQueueDLQName, healthBuilder);
 
             healthBuilder.withDetail("queueManager", mqQueueManager.getName());
             return healthBuilder.build();
@@ -116,4 +102,17 @@ public class MQQueueMetrics implements HealthIndicator {
                     .build();
         }
     }
+
+    private  void createHealthEntry(String requestQueueNameEntry, Health.Builder healthBuilder) {
+        int requestDepth = getQueueDepth(requestQueueNameEntry);
+        if (requestDepth >= 0) {
+            healthBuilder.withDetail(requestQueueNameEntry, requestDepth);
+        } else {
+            healthBuilder.withDetail(requestQueueNameEntry, "ACCESS_DENIED_OR_ERROR");
+            // Don't fail health check for auth issues, just report the problem
+            healthBuilder.withDetail("warning", "Authentication or permission issues detected");
+        }
+    }
+
+
 }

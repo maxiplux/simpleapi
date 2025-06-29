@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class MqMessageTestController {
 
     private final AuthService authService;
+
     @Qualifier("jmsTemplateRequest")
     private final JmsTemplate jmsTemplate;
 
@@ -37,15 +38,19 @@ public class MqMessageTestController {
     public String sendMessage(@RequestBody String message) {
 
         try {
-            jmsTemplate.setSessionTransacted(true);
+            // Don't use transacted sessions as it conflicts with CLIENT_ACKNOWLEDGE mode
+            jmsTemplate.setSessionTransacted(false);
 
             jmsTemplate.convertAndSend(queueRequest, message, messagePostProcessor -> {
                 // Add custom headers to the JMS message
                 messagePostProcessor.setStringProperty("customHeader", "myValue");
                 messagePostProcessor.setStringProperty("userId", "12345");
                 messagePostProcessor.setStringProperty("requestType", "demo");
+                                // Initialize JMS_IBM_BACKOUT_COUNT to 0 if needed
+               // messagePostProcessor.setIntProperty("JMS_IBM_BACKOUT_COUNT", 0);
                 return messagePostProcessor;
             });
+           // jmsTemplate.setDeliveryDelay(1 * 60 * 1000);
 
 
             return "Message sent to queue: " + queueRequest;
